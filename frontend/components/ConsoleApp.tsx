@@ -7,6 +7,20 @@ type Json = Record<string, unknown>;
 type ApiEnvelope = { status: number | string; data: Json };
 type Region = "mainland" | "zanzibar";
 
+function responseStatusLabel(payload: ApiEnvelope | null): string {
+  if (!payload) return "No Response";
+  if (typeof payload.status === "number") return `HTTP ${payload.status}`;
+  return "Client Error";
+}
+
+function responseStatusClass(payload: ApiEnvelope | null): string {
+  if (!payload || typeof payload.status !== "number") return "neutral";
+  if (payload.status >= 200 && payload.status < 300) return "ok";
+  if (payload.status >= 400 && payload.status < 500) return "warn";
+  if (payload.status >= 500) return "error";
+  return "neutral";
+}
+
 function getErrorHint(payload: ApiEnvelope | null): string {
   if (!payload || typeof payload.status !== "number" || payload.status < 400) return "";
 
@@ -157,20 +171,20 @@ export function ConsoleApp() {
           <form onSubmit={onRegister} className="stack">
             <label className="field">
               <span>Name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
             </label>
             <label className="field">
               <span>Email</span>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
             </label>
             <label className="field">
               <span>Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-            />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+              />
             </label>
             <div className="row">
               <button disabled={loading} type="submit">Register</button>
@@ -187,14 +201,18 @@ export function ConsoleApp() {
           <div className="stack">
             <label className="field">
               <span>Title Number</span>
-            <input value={titleNumber} onChange={(e) => setTitleNumber(e.target.value)} placeholder="Title Number" />
+              <input
+                value={titleNumber}
+                onChange={(e) => setTitleNumber(e.target.value)}
+                placeholder="Title Number"
+              />
             </label>
             <label className="field">
               <span>Region</span>
-            <select value={region} onChange={(e) => setRegion(e.target.value as Region)}>
-              <option value="mainland">Tanzania Mainland</option>
-              <option value="zanzibar">Zanzibar</option>
-            </select>
+              <select value={region} onChange={(e) => setRegion(e.target.value as Region)}>
+                <option value="mainland">Tanzania Mainland</option>
+                <option value="zanzibar">Zanzibar</option>
+              </select>
             </label>
             <div className="row wrap">
               <button disabled={!apiKey || loading} onClick={onSearch}>Search</button>
@@ -209,7 +227,10 @@ export function ConsoleApp() {
       </section>
 
       <section className="panel response">
-        <h2>Response</h2>
+        <div className="response-head">
+          <h2>Response</h2>
+          <div className={`status-pill ${responseStatusClass(response)}`}>{responseStatusLabel(response)}</div>
+        </div>
         {getErrorHint(response) ? <p className="hint">{getErrorHint(response)}</p> : null}
         <pre>{JSON.stringify(response, null, 2)}</pre>
       </section>

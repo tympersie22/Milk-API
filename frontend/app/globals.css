@@ -134,6 +134,7 @@ input, select, button {
   border-radius: 11px;
   border: 1px solid var(--line);
   padding: 11px 12px;
+  min-height: 42px;
 }
 
 input, select {
@@ -167,12 +168,55 @@ button:disabled {
   font-size: 12px;
   color: #426150;
   overflow-wrap: anywhere;
+  word-break: break-word;
   font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.response {
+  display: grid;
+  gap: 10px;
+}
+
+.response-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: #f6f3ea;
+}
+
+.status-pill.ok {
+  border-color: #94d5ad;
+  color: #0f5b2a;
+  background: #eaf9ef;
+}
+
+.status-pill.warn {
+  border-color: #f0c265;
+  color: #7b4f00;
+  background: #fff4df;
+}
+
+.status-pill.error {
+  border-color: #e79ea1;
+  color: #8b1f28;
+  background: #ffecef;
 }
 
 .response pre {
   margin: 0;
-  max-height: 420px;
+  max-height: min(50vh, 520px);
   overflow: auto;
   background: #122b20;
   color: #cafadb;
@@ -180,6 +224,9 @@ button:disabled {
   border-radius: 12px;
   font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12.5px;
+  line-height: 1.42;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .hint {
@@ -214,5 +261,79 @@ button:disabled {
   .hero {
     padding: 18px 16px;
     border-radius: 16px;
+  }
+
+  .panel {
+    border-radius: 14px;
+  }
+
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .row > button {
+    flex: 1 1 150px;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .hero h1 {
+    font-size: clamp(24px, 9vw, 32px);
+  }
+
+  .lead {
+    font-size: 14px;
+  }
+
+  .hero-meta span {
+    width: 100%;
+  }
+
+  .panel {
+    padding: 13px 12px;
+  }
+
+  .panel h2 {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .field span {
+    font-size: 11px;
+  }
+
+  input, select, button {
+    width: 100%;
+    font-size: 15px;
+  }
+
+  .row > button {
+    flex: 1 1 100%;
+  }
+
+  .response pre {
+    max-height: 44vh;
+    font-size: 12px;
+    padding: 10px;
+  }
+
+  .token {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 420px) {
+  .chip {
+    width: 100%;
+    text-align: center;
+  }
+
+  .hero-meta {
+    margin-top: 10px;
   }
 }
