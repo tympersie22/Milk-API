@@ -9,11 +9,20 @@ from app.core.exceptions import ApiError
 
 settings = get_settings()
 
+# Fixed salt tied to the application.  In production consider storing a
+# random salt alongside the encrypted data for per-record salting.
+_SALT = b"milki-pii-encryption-v1"
+
 
 def _fernet_key() -> bytes:
     raw = settings.pii_encryption_key.encode("utf-8")
-    digest = hashlib.sha256(raw).digest()
-    return base64.urlsafe_b64encode(digest)
+    derived = hashlib.pbkdf2_hmac(
+        "sha256",
+        password=raw,
+        salt=_SALT,
+        iterations=600_000,
+    )
+    return base64.urlsafe_b64encode(derived)
 
 
 def encrypt_text(plaintext: str) -> bytes:

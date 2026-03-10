@@ -1,9 +1,12 @@
 from uuid import UUID
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.encryption import decrypt_text
 from app.models.ownership import Ownership
+
+DEFAULT_PAGE_SIZE = 50
+MAX_PAGE_SIZE = 200
 
 
 class OwnershipService:
@@ -15,11 +18,21 @@ class OwnershipService:
         return db.scalar(stmt)
 
     @staticmethod
-    def get_history(db: Session, property_id: str) -> list[Ownership]:
-        stmt = select(Ownership).where(Ownership.property_id == UUID(property_id)).order_by(
-            Ownership.acquired_date.desc()
-        )
-        return list(db.scalars(stmt).all())
+    def get_history(
+        db: Session,
+        property_id: str,
+        limit: int = DEFAULT_PAGE_SIZE,
+        offset: int = 0,
+    ) -> tuple[list[Ownership], int]:
+        base = select(Ownership).where(Ownership.property_id == UUID(property_id))
+
+        total = db.scalar(
+            select(func.count()).select_from(base.subquery())
+        ) or 0
+
+        stmt = base.order_by(Ownership.acquired_date.desc()).limit(limit).offset(offset)
+        rows = list(db.scalars(stmt).all())
+        return rows, total
 
     @staticmethod
     def to_record(row: Ownership) -> dict:

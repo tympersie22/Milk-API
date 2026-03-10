@@ -8,7 +8,7 @@ from app.core.security import authenticate_api_key
 from app.db.session import get_db
 from app.models.property import Property
 from app.schemas.ownership import OwnershipHistoryResponse, OwnershipResponse
-from app.services.ownership_service import OwnershipService
+from app.services.ownership_service import MAX_PAGE_SIZE, OwnershipService
 
 router = APIRouter(prefix="/property", tags=["ownership"])
 
@@ -78,6 +78,8 @@ def get_ownership_history(
     request: Request,
     consent_confirmed: bool = Query(default=False),
     legal_basis: str = Query(default="consent"),
+    limit: int = Query(default=50, ge=1, le=MAX_PAGE_SIZE),
+    offset: int = Query(default=0, ge=0),
     auth=Depends(authenticate_api_key),
     db: Session = Depends(get_db),
 ) -> OwnershipHistoryResponse:
@@ -92,10 +94,10 @@ def get_ownership_history(
         raise ApiError(status_code=404, code="PROPERTY_NOT_FOUND", message="Property not found")
 
     try:
-        rows = OwnershipService.get_history(db, property_id)
+        rows, total = OwnershipService.get_history(db, property_id, limit=limit, offset=offset)
     except ValueError as exc:
         raise ApiError(status_code=400, code="INVALID_PROPERTY_ID", message="Invalid property id") from exc
-    if not rows:
+    if not rows and offset == 0:
         raise ApiError(status_code=404, code="OWNERSHIP_NOT_FOUND", message="No ownership history on record")
 
     records = [OwnershipService.to_record(row) for row in rows]
@@ -111,4 +113,10 @@ def get_ownership_history(
         data_categories=["personal", "ownership"],
         legal_basis=legal_basis,
     )
-    return OwnershipHistoryResponse(property_id=property_id, history=records)
+    return OwnershipHistoryResponse(
+        property_id=property_id,
+        history=records,
+        total=total,
+        limit=limit,
+        offset=offset,
+    )

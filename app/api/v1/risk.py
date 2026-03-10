@@ -29,16 +29,7 @@ def get_risk(
     if not record:
         raise ApiError(status_code=404, code="PROPERTY_NOT_FOUND", message="Property not found")
 
-    result = RiskEngine.compute(
-        {
-            "ownership_chain": 2.0,
-            "disputes": 1.0,
-            "encumbrances": 3.0,
-            "zone_compliance": 2.0,
-            "documentation": 1.0,
-            "data_freshness": 2.0,
-        }
-    )
+    result = RiskEngine.compute_from_db(db, property_uuid)
     write_audit_log(
         db=db,
         action="risk.view",

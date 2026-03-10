@@ -34,4 +34,6 @@ def write_audit_log(
         cross_border=cross_border,
     )
     db.add(log)
-    db.commit()
+    # Do NOT commit here — the caller's transaction will commit the audit
+    # log together with the main operation, ensuring atomicity.
+    db.flush()

@@ -6,18 +6,19 @@ from app.api.health import router as health_router
 from app.api.v1.router import router as v1_router
 from app.config import get_settings, parse_cors_origins
 from app.core.exceptions import ApiError
-from app.core.middleware import RequestIDMiddleware
+from app.core.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
 
 settings = get_settings()
 allowed_origins = set(parse_cors_origins(settings.cors_origins))
 app = FastAPI(title=settings.app_name, version="0.1.0")
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(allowed_origins),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Request-ID"],
 )
 
 

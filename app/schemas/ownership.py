@@ -24,3 +24,6 @@ class OwnershipResponse(BaseModel):
 class OwnershipHistoryResponse(BaseModel):
     property_id: str
     history: list[OwnershipRecord]
+    total: int = 0
+    limit: int = 50
+    offset: int = 0
