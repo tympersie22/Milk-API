@@ -139,22 +139,39 @@ export function ConsoleApp() {
   return (
     <main className="shell">
       <section className="hero">
-        <h1>Milki API Browser Console</h1>
-        <p>Connected to: {API_BASE}</p>
+        <div className="hero-top">
+          <p className="eyebrow">Milki API</p>
+          <span className="chip">Tanzania Property Intelligence</span>
+        </div>
+        <h1>Developer Console</h1>
+        <p className="lead">Auth, key issuance, property checks, verification, risk and ownership in one workflow.</p>
+        <div className="hero-meta">
+          <span>Base URL: {API_BASE}</span>
+          <span>Regions: Tanzania Mainland, Zanzibar</span>
+        </div>
       </section>
 
       <section className="grid">
         <article className="panel">
           <h2>Auth</h2>
           <form onSubmit={onRegister} className="stack">
+            <label className="field">
+              <span>Name</span>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
+            </label>
+            <label className="field">
+              <span>Email</span>
             <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+            </label>
+            <label className="field">
+              <span>Password</span>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
             />
+            </label>
             <div className="row">
               <button disabled={loading} type="submit">Register</button>
               <button disabled={loading} onClick={onLogin} type="button">Login</button>
@@ -168,11 +185,17 @@ export function ConsoleApp() {
         <article className="panel">
           <h2>Property Flows</h2>
           <div className="stack">
+            <label className="field">
+              <span>Title Number</span>
             <input value={titleNumber} onChange={(e) => setTitleNumber(e.target.value)} placeholder="Title Number" />
+            </label>
+            <label className="field">
+              <span>Region</span>
             <select value={region} onChange={(e) => setRegion(e.target.value as Region)}>
               <option value="mainland">Tanzania Mainland</option>
               <option value="zanzibar">Zanzibar</option>
             </select>
+            </label>
             <div className="row wrap">
               <button disabled={!apiKey || loading} onClick={onSearch}>Search</button>
               <button disabled={!apiKey || loading} onClick={onVerify}>Verify</button>
