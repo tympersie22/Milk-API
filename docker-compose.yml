@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  api:
+    image: python:3.11-slim
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    command: sh -c "pip install -e '.[dev]' && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.docker
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY}
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgis/postgis:15-3.3
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env.docker
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"

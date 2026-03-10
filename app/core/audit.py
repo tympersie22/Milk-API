@@ -1,0 +1,37 @@
+from uuid import UUID
+from sqlalchemy.orm import Session
+
+from app.models.audit_log import AuditLog
+
+
+def write_audit_log(
+    db: Session,
+    action: str,
+    request_id: str | None,
+    api_key_prefix: str | None = None,
+    user_id: str | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+    details: dict | None = None,
+    data_categories: list[str] | None = None,
+    legal_basis: str | None = None,
+    cross_border: bool = False,
+) -> None:
+    log = AuditLog(
+        action=action,
+        request_id=UUID(request_id) if request_id else None,
+        api_key_prefix=api_key_prefix,
+        user_id=UUID(user_id) if user_id else None,
+        resource_type=resource_type,
+        resource_id=UUID(resource_id) if resource_id else None,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        details=details,
+        data_categories=data_categories,
+        legal_basis=legal_basis,
+        cross_border=cross_border,
+    )
+    db.add(log)
+    db.commit()

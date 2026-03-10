@@ -1,0 +1,9 @@
+name: CD Production
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Configure production deploy target"

@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "milki-api"
+version = "0.1.0"
+description = "Milki API - Tanzania Property Intelligence"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.116.0,<1.0.0",
+  "uvicorn[standard]>=0.35.0,<1.0.0",
+  "sqlalchemy>=2.0.38,<3.0.0",
+  "alembic>=1.14.1,<2.0.0",
+  "psycopg[binary]>=3.2.6,<4.0.0",
+  "pydantic-settings>=2.8.1,<3.0.0",
+  "python-jose[cryptography]>=3.4.0,<4.0.0",
+  "passlib[bcrypt]>=1.7.4,<2.0.0",
+  "cryptography>=44.0.2,<45.0.0",
+  "geoalchemy2>=0.17.1,<1.0.0",
+  "email-validator>=2.2.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.5,<9.0.0",
+  "pytest-cov>=6.0.0,<7.0.0",
+  "httpx>=0.28.1,<1.0.0",
+  "ruff>=0.11.0,<1.0.0",
+  "mypy>=1.15.0,<2.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

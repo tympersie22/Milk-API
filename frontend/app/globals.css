@@ -1,0 +1,105 @@
+:root {
+  --bg: #f4efe6;
+  --ink: #112318;
+  --brand: #0c6b43;
+  --brand-2: #1e9f70;
+  --panel: #fffbf5;
+  --line: #d7cbb8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 8%, #f0d7a0 0%, transparent 35%),
+    radial-gradient(circle at 95% 18%, #b8e5d2 0%, transparent 40%),
+    var(--bg);
+}
+
+.shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.hero {
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #f7fff9;
+  padding: 18px;
+  border-radius: 16px;
+}
+
+.hero h1 { margin: 0 0 8px; font-size: 28px; }
+.hero p { margin: 0; opacity: 0.9; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.panel h2 { margin-top: 0; }
+.stack { display: grid; gap: 10px; }
+.row { display: flex; gap: 8px; }
+.row.wrap { flex-wrap: wrap; }
+
+input, select, button {
+  font: inherit;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+}
+
+button {
+  background: var(--brand);
+  color: #fff;
+  border-color: transparent;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.token {
+  font-size: 12px;
+  color: #385445;
+  overflow-wrap: anywhere;
+}
+
+.response pre {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  background: #0f271b;
+  color: #b9ffd6;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.hint {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #f3b03f;
+  background: #fff4df;
+  color: #7b4f00;
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,9 @@
+name: CD Staging
+on:
+  push:
+    branches: [develop]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Configure staging deploy target"
