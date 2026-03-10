@@ -2,9 +2,18 @@ import uuid
 import sqlalchemy as sa
 from sqlalchemy import Boolean, Date, Enum, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
+from geoalchemy2 import Geometry
 
 from app.models.base import Base, TimestampMixin
 from app.models.enums import LandType, OwnershipType, RegionType
+
+polygon_geom = Geometry(geometry_type="POLYGON", srid=4326, spatial_index=False).with_variant(
+    Text(), "sqlite"
+)
+point_geom = Geometry(geometry_type="POINT", srid=4326, spatial_index=False).with_variant(
+    Text(), "sqlite"
+)
+
 
 class Property(Base, TimestampMixin):
     __tablename__ = "properties"
@@ -24,9 +33,8 @@ class Property(Base, TimestampMixin):
     lease_start_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
     lease_end_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
     lease_duration_years: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    # Stored as WKT in ORM for portability; migrations create PostGIS geometry in PostgreSQL.
-    boundary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    centroid: Mapped[str | None] = mapped_column(Text, nullable=True)
+    boundary: Mapped[str | None] = mapped_column(polygon_geom, nullable=True)
+    centroid: Mapped[str | None] = mapped_column(point_geom, nullable=True)
     survey_plan_ref: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     last_verified_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)

@@ -2,9 +2,15 @@ import uuid
 import sqlalchemy as sa
 from sqlalchemy import Date, Enum, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
+from geoalchemy2 import Geometry
 
 from app.models.base import Base, TimestampMixin
 from app.models.enums import LandType, RegionType
+
+polygon_geom = Geometry(geometry_type="POLYGON", srid=4326, spatial_index=False).with_variant(
+    Text(), "sqlite"
+)
+
 
 class Zone(Base, TimestampMixin):
     __tablename__ = "zones"
@@ -22,8 +28,7 @@ class Zone(Base, TimestampMixin):
     setback_side_m: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
     allowed_uses: Mapped[list[str] | None] = mapped_column(sa.JSON, nullable=True)
     restricted_uses: Mapped[list[str] | None] = mapped_column(sa.JSON, nullable=True)
-    # Stored as WKT in ORM for portability; migrations create PostGIS geometry in PostgreSQL.
-    boundary: Mapped[str] = mapped_column(Text)
+    boundary: Mapped[str] = mapped_column(polygon_geom)
     gazette_ref: Mapped[str | None] = mapped_column(String(100), nullable=True)
     effective_date: Mapped[sa.Date | None] = mapped_column(Date, nullable=True)
     data_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
