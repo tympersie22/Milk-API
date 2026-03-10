@@ -150,6 +150,67 @@ export function ConsoleApp() {
     );
   }
 
+  async function onFullReportJson() {
+    await run(() =>
+      apiRequest("/reports/full", {
+        method: "POST",
+        apiKey,
+        timeoutMs: 60000,
+        body: JSON.stringify(
+          propertyId
+            ? { property_id: propertyId, format: "json", include_risk: true }
+            : { title_number: titleNumber, region, format: "json", include_risk: true }
+        )
+      })
+    );
+  }
+
+  async function onFullReportPdf() {
+    setLoading(true);
+    try {
+      const res = await apiRequest("/reports/full", {
+        method: "POST",
+        apiKey,
+        timeoutMs: 60000,
+        body: JSON.stringify(
+          propertyId
+            ? { property_id: propertyId, format: "pdf", include_risk: true }
+            : { title_number: titleNumber, region, format: "pdf", include_risk: true }
+        )
+      });
+
+      if (!res.ok) {
+        const data = (await res.json()) as Json;
+        setResponse({ status: res.status, data });
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `milki-report-${titleNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      setResponse({
+        status: res.status,
+        data: {
+          message: "PDF downloaded",
+          content_type: res.headers.get("content-type"),
+          bytes: blob.size
+        }
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setResponse({ status: "error", data: { message } });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="shell">
       <section className="hero">
@@ -220,6 +281,8 @@ export function ConsoleApp() {
               <button disabled={!apiKey || !propertyId || loading} onClick={onRisk}>Risk</button>
               <button disabled={!apiKey || !propertyId || loading} onClick={onOwnership}>Ownership</button>
               <button disabled={!apiKey || !propertyId || loading} onClick={onOwnershipHistory}>History</button>
+              <button disabled={!apiKey || loading} onClick={onFullReportJson}>Report JSON</button>
+              <button disabled={!apiKey || loading} onClick={onFullReportPdf}>Report PDF</button>
             </div>
             <p className="token">Property ID: {propertyId || "-"}</p>
           </div>

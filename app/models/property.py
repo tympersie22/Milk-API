@@ -4,15 +4,17 @@ from sqlalchemy import Boolean, Date, Enum, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 from geoalchemy2 import Geometry
 
+from app.config import get_settings
 from app.models.base import Base, TimestampMixin
 from app.models.enums import LandType, OwnershipType, RegionType
 
-polygon_geom = Geometry(geometry_type="POLYGON", srid=4326, spatial_index=False).with_variant(
-    Text(), "sqlite"
-)
-point_geom = Geometry(geometry_type="POINT", srid=4326, spatial_index=False).with_variant(
-    Text(), "sqlite"
-)
+settings = get_settings()
+if settings.database_url.startswith("sqlite"):
+    polygon_geom = Text()
+    point_geom = Text()
+else:
+    polygon_geom = Geometry(geometry_type="POLYGON", srid=4326, spatial_index=False)
+    point_geom = Geometry(geometry_type="POINT", srid=4326, spatial_index=False)
 
 
 class Property(Base, TimestampMixin):

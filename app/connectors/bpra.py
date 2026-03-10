@@ -7,4 +7,5 @@ class BPRAConnector(BaseConnector):
         self._index = {item["title_number"]: item for item in ZANZIBAR_CORRIDOR_PROPERTIES}
 
     def get_property_by_title(self, title_number: str) -> dict | None:
-        return self._index.get(title_number)
+        record = self._index.get(title_number)
+        return dict(record) if record else None

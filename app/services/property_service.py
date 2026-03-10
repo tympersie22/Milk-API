@@ -22,6 +22,17 @@ class PropertyService:
         if existing:
             return existing
 
+        centroid_wkt = None
+        boundary_wkt = None
+        if isinstance(record.get("centroid"), (tuple, list)) and len(record["centroid"]) == 2:
+            lng, lat = float(record["centroid"][0]), float(record["centroid"][1])
+            centroid_wkt = f"POINT({lng} {lat})"
+            delta = 0.0025
+            boundary_wkt = (
+                f"POLYGON(({lng - delta} {lat - delta}, {lng + delta} {lat - delta}, "
+                f"{lng + delta} {lat + delta}, {lng - delta} {lat + delta}, {lng - delta} {lat - delta}))"
+            )
+
         property_obj = Property(
             title_number=record["title_number"],
             region=RegionType(record["region"]),
@@ -32,6 +43,8 @@ class PropertyService:
             land_type=LandType(record["land_type"]),
             ownership_type=OwnershipType(record["ownership_type"]),
             area_sqm=record.get("area_sqm"),
+            boundary=boundary_wkt,
+            centroid=centroid_wkt,
             is_verified=True,
             last_verified_at=datetime.now(UTC),
             data_source=record.get("data_source", "stub"),
