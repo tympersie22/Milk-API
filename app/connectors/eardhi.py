@@ -11,3 +11,9 @@ class EArdhiConnector(BaseConnector):
     def get_property_by_title(self, title_number: str) -> dict | None:
         record = self._records.get(title_number)
         return dict(record) if record else None
+
+    def list_properties(self) -> list[dict]:
+        return [dict(item) for item in self._records.values()]
+
+    def provider_name(self) -> str:
+        return "eardhi_stub"

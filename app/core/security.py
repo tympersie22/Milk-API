@@ -23,6 +23,7 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 api_key_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRES_MINUTES = 60
+REPORT_DOWNLOAD_EXPIRES_MINUTES = 15
 
 TIER_MONTHLY_QUOTA: dict[ApiTier, int | None] = {
     ApiTier.free: 100,
@@ -86,6 +87,36 @@ def create_refresh_token(user_id: str) -> str:
     expire = datetime.now(UTC) + timedelta(days=30)
     payload = {"sub": user_id, "exp": expire, "type": "refresh"}
     return jwt.encode(payload, settings.secret_key, algorithm=JWT_ALGORITHM)
+
+
+def create_report_download_token(
+    report_id: str,
+    user_id: str,
+    format_type: str,
+    expires_minutes: int = REPORT_DOWNLOAD_EXPIRES_MINUTES,
+) -> tuple[str, datetime]:
+    expires_at = datetime.now(UTC) + timedelta(minutes=expires_minutes)
+    payload = {
+        "type": "report_download",
+        "rid": report_id,
+        "uid": user_id,
+        "fmt": format_type,
+        "exp": expires_at,
+    }
+    token = jwt.encode(payload, settings.secret_key, algorithm=JWT_ALGORITHM)
+    return token, expires_at
+
+
+def verify_report_download_token(token: str, report_id: str, user_id: str, format_type: str) -> None:
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[JWT_ALGORITHM])
+    except JWTError as exc:
+        raise ApiError(status_code=401, code="INVALID_DOWNLOAD_TOKEN", message="Invalid or expired download token") from exc
+
+    if payload.get("type") != "report_download":
+        raise ApiError(status_code=401, code="INVALID_DOWNLOAD_TOKEN", message="Invalid download token type")
+    if payload.get("rid") != report_id or payload.get("uid") != user_id or payload.get("fmt") != format_type:
+        raise ApiError(status_code=401, code="INVALID_DOWNLOAD_TOKEN", message="Download token payload mismatch")
 
 
 def parse_bearer_token(authorization: str | None) -> str:

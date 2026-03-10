@@ -1,7 +1,25 @@
 from uuid import UUID
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import ApiError
 from app.models.audit_log import AuditLog
+
+
+def ensure_pdpa_audit_fields(action: str, data_categories: list[str] | None, legal_basis: str | None) -> None:
+    if not action.startswith("report.") and not action.startswith("ownership."):
+        return
+    if not data_categories:
+        raise ApiError(
+            status_code=500,
+            code="AUDIT_MISCONFIGURED",
+            message=f"Missing data_categories for sensitive action: {action}",
+        )
+    if not legal_basis:
+        raise ApiError(
+            status_code=500,
+            code="AUDIT_MISCONFIGURED",
+            message=f"Missing legal_basis for sensitive action: {action}",
+        )
 
 
 def write_audit_log(
@@ -19,6 +37,7 @@ def write_audit_log(
     legal_basis: str | None = None,
     cross_border: bool = False,
 ) -> None:
+    ensure_pdpa_audit_fields(action, data_categories, legal_basis)
     log = AuditLog(
         action=action,
         request_id=UUID(request_id) if request_id else None,

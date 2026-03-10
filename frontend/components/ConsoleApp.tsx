@@ -6,6 +6,19 @@ import { API_BASE, apiRequest } from "../lib/api";
 type Json = Record<string, unknown>;
 type ApiEnvelope = { status: number | string; data: Json };
 type Region = "mainland" | "zanzibar";
+type ReportStatus = "processing" | "completed" | "failed";
+type ReportFormat = "json" | "pdf";
+
+type ReportListItem = {
+  report_id: string;
+  status: ReportStatus;
+  requested_format: ReportFormat;
+  title_number: string;
+  property_id: string;
+  region: Region;
+  created_at: string;
+  completed_at?: string | null;
+};
 
 function responseStatusLabel(payload: ApiEnvelope | null): string {
   if (!payload) return "No Response";
@@ -56,6 +69,13 @@ export function ConsoleApp() {
   const [titleNumber, setTitleNumber] = useState("ZNZ-NGW-0001");
   const [region, setRegion] = useState<Region>("zanzibar");
   const [propertyId, setPropertyId] = useState("");
+  const [reportId, setReportId] = useState("");
+  const [reportStatus, setReportStatus] = useState("idle");
+  const [historyStatus, setHistoryStatus] = useState<"" | ReportStatus>("");
+  const [historyRegion, setHistoryRegion] = useState<"" | Region>("");
+  const [historyFormat, setHistoryFormat] = useState<"" | ReportFormat>("");
+  const [historyTitle, setHistoryTitle] = useState("");
+  const [historyRows, setHistoryRows] = useState<ReportListItem[]>([]);
 
   const [response, setResponse] = useState<ApiEnvelope | null>(null);
   const [loading, setLoading] = useState(false);
@@ -150,62 +170,136 @@ export function ConsoleApp() {
     );
   }
 
-  async function onFullReportJson() {
-    await run(() =>
+  async function createReportJob(format: "json" | "pdf"): Promise<string | null> {
+    const data = await run(() =>
       apiRequest("/reports/full", {
         method: "POST",
         apiKey,
         timeoutMs: 60000,
         body: JSON.stringify(
           propertyId
-            ? { property_id: propertyId, format: "json", include_risk: true }
-            : { title_number: titleNumber, region, format: "json", include_risk: true }
+            ? { property_id: propertyId, format, include_risk: true }
+            : { title_number: titleNumber, region, format, include_risk: true }
         )
       })
     );
+
+    const id = data && typeof data.report_id === "string" ? data.report_id : null;
+    if (id) {
+      setReportId(id);
+      setReportStatus("processing");
+    }
+    return id;
   }
 
-  async function onFullReportPdf() {
+  async function pollReportDone(id: string): Promise<boolean> {
+    for (let i = 0; i < 20; i += 1) {
+      const res = await apiRequest(`/reports/${id}`, { apiKey, timeoutMs: 60000 });
+      const data = (await res.json()) as Json;
+      setResponse({ status: res.status, data });
+      if (!res.ok) return false;
+      const status = typeof data.status === "string" ? data.status : "";
+      if (status === "completed") {
+        setReportStatus("completed");
+        return true;
+      }
+      if (status === "failed") {
+        setReportStatus("failed");
+        return false;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    setReportStatus("processing");
+    return false;
+  }
+
+  async function downloadReportByFormat(id: string, format: "json" | "pdf") {
+    const signed = await apiRequest(`/reports/${id}/download-url?format=${format}`, {
+      apiKey,
+      timeoutMs: 30000
+    });
+    const signedData = (await signed.json()) as Json;
+    const downloadUrl = typeof signedData.download_url === "string" ? signedData.download_url : "";
+    if (!signed.ok || !downloadUrl) {
+      setResponse({ status: signed.status, data: signedData });
+      return;
+    }
+
+    const fileRes = await fetch(downloadUrl, { cache: "no-store" });
+    if (!fileRes.ok) {
+      const text = await fileRes.text();
+      setResponse({ status: fileRes.status, data: { message: text } });
+      return;
+    }
+    const blob = await fileRes.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `milki-report-${titleNumber}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    setResponse({
+      status: 200,
+      data: {
+        message: `${format.toUpperCase()} downloaded`,
+        bytes: blob.size,
+        report_id: id
+      }
+    });
+  }
+
+  async function runReportDownload(format: "json" | "pdf") {
     setLoading(true);
     try {
-      const res = await apiRequest("/reports/full", {
-        method: "POST",
-        apiKey,
-        timeoutMs: 60000,
-        body: JSON.stringify(
-          propertyId
-            ? { property_id: propertyId, format: "pdf", include_risk: true }
-            : { title_number: titleNumber, region, format: "pdf", include_risk: true }
-        )
-      });
-
-      if (!res.ok) {
-        const data = (await res.json()) as Json;
-        setResponse({ status: res.status, data });
-        return;
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `milki-report-${titleNumber}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-
-      setResponse({
-        status: res.status,
-        data: {
-          message: "PDF downloaded",
-          content_type: res.headers.get("content-type"),
-          bytes: blob.size
-        }
-      });
+      const id = await createReportJob(format);
+      if (!id) return;
+      const done = await pollReportDone(id);
+      if (!done) return;
+      await downloadReportByFormat(id, format);
+      await loadReportHistory();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       setResponse({ status: "error", data: { message } });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onFullReportJson() {
+    await runReportDownload("json");
+  }
+
+  async function onFullReportPdf() {
+    await runReportDownload("pdf");
+  }
+
+  async function loadReportHistory() {
+    const params = new URLSearchParams();
+    if (historyStatus) params.set("status", historyStatus);
+    if (historyRegion) params.set("region", historyRegion);
+    if (historyFormat) params.set("format", historyFormat);
+    if (historyTitle.trim()) params.set("title_number", historyTitle.trim());
+    params.set("page", "1");
+    params.set("per_page", "20");
+
+    const path = `/reports${params.toString() ? `?${params.toString()}` : ""}`;
+    const res = await apiRequest(path, { apiKey });
+    const data = (await res.json()) as Json;
+    setResponse({ status: res.status, data });
+    if (!res.ok) return;
+
+    const rows = Array.isArray(data.data) ? (data.data as ReportListItem[]) : [];
+    setHistoryRows(rows);
+  }
+
+  async function redownload(reportId: string, format: ReportFormat) {
+    if (!apiKey) return;
+    setLoading(true);
+    try {
+      await downloadReportByFormat(reportId, format);
     } finally {
       setLoading(false);
     }
@@ -285,6 +379,69 @@ export function ConsoleApp() {
               <button disabled={!apiKey || loading} onClick={onFullReportPdf}>Download PDF</button>
             </div>
             <p className="token">Property ID: {propertyId || "-"}</p>
+            <p className="token">Report ID: {reportId || "-"}</p>
+            <p className="token">Report Status: {reportStatus}</p>
+          </div>
+        </article>
+
+        <article className="panel">
+          <h2>Report History</h2>
+          <div className="stack">
+            <div className="row wrap">
+              <label className="field">
+                <span>Status</span>
+                <select value={historyStatus} onChange={(e) => setHistoryStatus(e.target.value as "" | ReportStatus)}>
+                  <option value="">All</option>
+                  <option value="processing">Processing</option>
+                  <option value="completed">Completed</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Region</span>
+                <select value={historyRegion} onChange={(e) => setHistoryRegion(e.target.value as "" | Region)}>
+                  <option value="">All</option>
+                  <option value="mainland">Mainland</option>
+                  <option value="zanzibar">Zanzibar</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Format</span>
+                <select value={historyFormat} onChange={(e) => setHistoryFormat(e.target.value as "" | ReportFormat)}>
+                  <option value="">All</option>
+                  <option value="json">JSON</option>
+                  <option value="pdf">PDF</option>
+                </select>
+              </label>
+            </div>
+            <label className="field">
+              <span>Title contains</span>
+              <input value={historyTitle} onChange={(e) => setHistoryTitle(e.target.value)} placeholder="e.g. ZNZ-NGW" />
+            </label>
+            <button disabled={!apiKey || loading} onClick={loadReportHistory}>Load History</button>
+
+            <div className="stack">
+              {historyRows.length === 0 ? (
+                <p className="token">No report history loaded yet.</p>
+              ) : (
+                historyRows.map((row) => (
+                  <div key={row.report_id} className="panel" style={{ padding: "10px" }}>
+                    <p className="token">Report: {row.report_id}</p>
+                    <p className="token">
+                      {row.title_number} | {row.region} | {row.status} | {row.requested_format}
+                    </p>
+                    <div className="row wrap">
+                      <button disabled={row.status !== "completed" || loading} onClick={() => redownload(row.report_id, "pdf")}>
+                        Re-download PDF
+                      </button>
+                      <button disabled={row.status !== "completed" || loading} onClick={() => redownload(row.report_id, "json")}>
+                        Re-download JSON
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </article>
       </section>

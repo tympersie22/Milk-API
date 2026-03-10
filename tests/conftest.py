@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.db import base as db_base  # noqa: F401 - ensure all model metadata is registered
 from app.db.session import get_db
 from app.main import app
 from app.models.base import Base

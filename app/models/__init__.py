@@ -5,6 +5,8 @@ from app.models.dispute import Dispute
 from app.models.ownership import Ownership
 from app.models.payment import Payment
 from app.models.property import Property
+from app.models.report import Report
+from app.models.sync_run import SyncRun
 from app.models.risk_score import RiskScore
 from app.models.valuation import PriceHistory, Valuation
 from app.models.webhook import WebhookSubscription
@@ -18,6 +20,8 @@ __all__ = [
     "Ownership",
     "Payment",
     "Property",
+    "Report",
+    "SyncRun",
     "RiskScore",
     "PriceHistory",
     "Valuation",

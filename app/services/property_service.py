@@ -19,9 +19,6 @@ class PropertyService:
         existing = db.scalar(
             select(Property).where(Property.title_number == record["title_number"])
         )
-        if existing:
-            return existing
-
         centroid_wkt = None
         boundary_wkt = None
         if isinstance(record.get("centroid"), (tuple, list)) and len(record["centroid"]) == 2:
@@ -32,6 +29,30 @@ class PropertyService:
                 f"POLYGON(({lng - delta} {lat - delta}, {lng + delta} {lat - delta}, "
                 f"{lng + delta} {lat + delta}, {lng - delta} {lat + delta}, {lng - delta} {lat - delta}))"
             )
+
+        if existing:
+            existing.region = RegionType(record["region"])
+            existing.district = record["district"]
+            existing.ward = record.get("ward")
+            existing.street = record.get("street")
+            existing.area_name = record.get("area_name")
+            existing.land_type = LandType(record["land_type"])
+            existing.ownership_type = OwnershipType(record["ownership_type"])
+            existing.area_sqm = record.get("area_sqm")
+            existing.boundary = boundary_wkt
+            existing.centroid = centroid_wkt
+            existing.is_verified = True
+            existing.last_verified_at = datetime.now(UTC)
+            existing.data_source = record.get("data_source", existing.data_source)
+            existing.data_confidence = record.get("data_confidence", existing.data_confidence)
+            existing.foreign_eligible = record.get("foreign_eligible")
+            existing.zipa_registered = record.get("zipa_registered")
+            existing.coastal_buffer_zone = record.get("coastal_buffer_zone", False)
+            existing.heritage_zone = record.get("heritage_zone", False)
+            db.add(existing)
+            db.commit()
+            db.refresh(existing)
+            return existing
 
         property_obj = Property(
             title_number=record["title_number"],
@@ -67,6 +88,10 @@ class PropertyService:
             raise
         db.refresh(property_obj)
         return property_obj
+
+    @classmethod
+    def upsert_from_connector_record(cls, db: Session, record: dict) -> Property:
+        return cls._persist_connector_record(db, record)
 
     @classmethod
     def _connector_lookup(cls, title_number: str, region: str | None = None) -> dict | None:

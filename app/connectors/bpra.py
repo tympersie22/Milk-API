@@ -9,3 +9,9 @@ class BPRAConnector(BaseConnector):
     def get_property_by_title(self, title_number: str) -> dict | None:
         record = self._index.get(title_number)
         return dict(record) if record else None
+
+    def list_properties(self) -> list[dict]:
+        return [dict(item) for item in self._index.values()]
+
+    def provider_name(self) -> str:
+        return "bpra_stub"

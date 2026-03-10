@@ -3,10 +3,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.schemas.common import PaginationMeta
 from app.schemas.ownership import OwnershipRecord
 from app.schemas.risk import RiskResponse
 
 ReportFormat = Literal["json", "pdf"]
+ReportStatus = Literal["processing", "completed", "failed"]
 
 
 class FullReportRequest(BaseModel):
@@ -52,3 +54,55 @@ class FullPropertyReport(BaseModel):
     ownership_history: list[OwnershipRecord] = Field(default_factory=list)
     risk: RiskResponse | None = None
     notes: list[str] = Field(default_factory=list)
+
+
+class ReportCreateResponse(BaseModel):
+    report_id: str
+    status: ReportStatus
+    estimated_seconds: int
+    callback_url: str
+    processing_mode: Literal["queued", "inline"] = "queued"
+
+
+class ReportStatusResponse(BaseModel):
+    report_id: str
+    status: ReportStatus
+    requested_format: ReportFormat
+    title_number: str
+    property_id: str
+    region: str
+    created_at: datetime
+    completed_at: datetime | None = None
+    error_message: str | None = None
+    report: FullPropertyReport | None = None
+
+
+class ReportListQuery(BaseModel):
+    status: ReportStatus | None = None
+    format: ReportFormat | None = None
+    region: Literal["mainland", "zanzibar"] | None = None
+    title_number: str | None = None
+    page: int = Field(default=1, ge=1)
+    per_page: int = Field(default=20, ge=1, le=100)
+
+
+class ReportListItem(BaseModel):
+    report_id: str
+    status: ReportStatus
+    requested_format: ReportFormat
+    title_number: str
+    property_id: str
+    region: str
+    created_at: datetime
+    completed_at: datetime | None = None
+
+
+class ReportListResponse(BaseModel):
+    data: list[ReportListItem]
+    pagination: PaginationMeta
+
+
+class SignedDownloadResponse(BaseModel):
+    download_url: str
+    expires_at: datetime
+    format: ReportFormat

@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     secret_key: str
     database_url: str = "sqlite+pysqlite:///./milki.db"
     redis_url: str = "redis://localhost:6379/0"
+    celery_broker_url: str | None = None
+    celery_result_backend: str | None = None
+    report_queue_fallback_inline: bool = True
     pii_encryption_key: str
     allowed_api_key_prefix: str = "mlk_"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
