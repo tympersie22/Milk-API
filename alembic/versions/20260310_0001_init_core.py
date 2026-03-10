@@ -56,8 +56,16 @@ api_tier = postgresql.ENUM("free", "basic", "professional", "enterprise", name="
 def upgrade() -> None:
     bind = op.get_bind()
     is_postgres = bind.dialect.name == "postgresql"
-    polygon_type = Geometry(geometry_type="POLYGON", srid=4326) if is_postgres else sa.Text()
-    point_type = Geometry(geometry_type="POINT", srid=4326) if is_postgres else sa.Text()
+    polygon_type = (
+        Geometry(geometry_type="POLYGON", srid=4326, spatial_index=False)
+        if is_postgres
+        else sa.Text()
+    )
+    point_type = (
+        Geometry(geometry_type="POINT", srid=4326, spatial_index=False)
+        if is_postgres
+        else sa.Text()
+    )
 
     if is_postgres:
         op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
@@ -79,15 +87,15 @@ def upgrade() -> None:
         "properties",
         sa.Column("id", sa.Uuid(), primary_key=True, nullable=False),
         sa.Column("title_number", sa.String(length=100), nullable=False, unique=True),
-        sa.Column("region", sa.Enum(name="region_type", create_type=False), nullable=False),
+        sa.Column("region", postgresql.ENUM(name="region_type", create_type=False), nullable=False),
         sa.Column("district", sa.String(length=100), nullable=False),
         sa.Column("ward", sa.String(length=100), nullable=True),
         sa.Column("street", sa.String(length=200), nullable=True),
         sa.Column("area_name", sa.String(length=200), nullable=True),
-        sa.Column("land_type", sa.Enum(name="land_type", create_type=False), nullable=False),
+        sa.Column("land_type", postgresql.ENUM(name="land_type", create_type=False), nullable=False),
         sa.Column(
             "ownership_type",
-            sa.Enum(name="ownership_type", create_type=False),
+            postgresql.ENUM(name="ownership_type", create_type=False),
             nullable=False,
         ),
         sa.Column("area_sqm", sa.Numeric(12, 2), nullable=True),
@@ -123,7 +131,7 @@ def upgrade() -> None:
         sa.Column("email", sa.String(length=255), nullable=False, unique=True),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("company", sa.String(length=200), nullable=True),
-        sa.Column("tier", sa.Enum(name="api_tier", create_type=False), nullable=False),
+        sa.Column("tier", postgresql.ENUM(name="api_tier", create_type=False), nullable=False),
         sa.Column("phone", sa.String(length=20), nullable=True),
         sa.Column("monthly_quota", sa.Integer(), nullable=False, server_default="100"),
         sa.Column("requests_this_month", sa.Integer(), nullable=False, server_default="0"),
@@ -179,9 +187,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False, primary_key=True),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("zone_code", sa.String(length=50), nullable=True),
-        sa.Column("region", sa.Enum(name="region_type", create_type=False), nullable=False),
+        sa.Column("region", postgresql.ENUM(name="region_type", create_type=False), nullable=False),
         sa.Column("district", sa.String(length=100), nullable=False),
-        sa.Column("zone_type", sa.Enum(name="land_type", create_type=False), nullable=False),
+        sa.Column("zone_type", postgresql.ENUM(name="land_type", create_type=False), nullable=False),
         sa.Column("max_floors", sa.Integer(), nullable=True),
         sa.Column("max_coverage_pct", sa.Numeric(5, 2), nullable=True),
         sa.Column("min_plot_size_sqm", sa.Numeric(12, 2), nullable=True),
@@ -207,7 +215,7 @@ def upgrade() -> None:
         sa.Column("case_number", sa.String(length=100), nullable=True),
         sa.Column("court_name", sa.String(length=200), nullable=True),
         sa.Column("dispute_type", sa.String(length=100), nullable=True),
-        sa.Column("status", sa.Enum(name="dispute_status", create_type=False), nullable=False),
+        sa.Column("status", postgresql.ENUM(name="dispute_status", create_type=False), nullable=False),
         sa.Column("filed_date", sa.Date(), nullable=True),
         sa.Column("resolution_date", sa.Date(), nullable=True),
         sa.Column("description", sa.Text(), nullable=True),
@@ -224,7 +232,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False, primary_key=True),
         sa.Column("property_id", sa.Uuid(), sa.ForeignKey("properties.id"), nullable=False),
         sa.Column("overall_score", sa.Numeric(4, 2), nullable=False),
-        sa.Column("risk_level", sa.Enum(name="risk_level", create_type=False), nullable=False),
+        sa.Column("risk_level", postgresql.ENUM(name="risk_level", create_type=False), nullable=False),
         sa.Column("ownership_chain_score", sa.Numeric(4, 2), nullable=True),
         sa.Column("dispute_score", sa.Numeric(4, 2), nullable=True),
         sa.Column("encumbrance_score", sa.Numeric(4, 2), nullable=True),
@@ -267,7 +275,7 @@ def upgrade() -> None:
         sa.Column("price_usd", sa.Numeric(15, 2), nullable=True),
         sa.Column("price_per_sqm_tzs", sa.Numeric(12, 2), nullable=True),
         sa.Column("area_sqm", sa.Numeric(12, 2), nullable=True),
-        sa.Column("land_type", sa.Enum(name="land_type", create_type=False), nullable=True),
+        sa.Column("land_type", postgresql.ENUM(name="land_type", create_type=False), nullable=True),
         sa.Column("source", sa.String(length=50), nullable=False),
         sa.Column("source_ref", sa.String(length=200), nullable=True),
         sa.Column("verified", sa.Boolean(), nullable=False, server_default=sa.text("false")),
@@ -284,11 +292,11 @@ def upgrade() -> None:
         sa.Column("amount_tzs", sa.Numeric(12, 2), nullable=False),
         sa.Column("amount_usd", sa.Numeric(12, 2), nullable=True),
         sa.Column("currency", sa.String(length=3), nullable=False, server_default="TZS"),
-        sa.Column("provider", sa.Enum(name="payment_provider", create_type=False), nullable=False),
+        sa.Column("provider", postgresql.ENUM(name="payment_provider", create_type=False), nullable=False),
         sa.Column("provider_ref", sa.String(length=200), nullable=True),
         sa.Column("phone_number", sa.String(length=20), nullable=True),
         sa.Column("service_type", sa.String(length=50), nullable=False),
-        sa.Column("status", sa.Enum(name="payment_status", create_type=False), nullable=False),
+        sa.Column("status", postgresql.ENUM(name="payment_status", create_type=False), nullable=False),
         sa.Column("initiated_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP")),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("failed_at", sa.DateTime(timezone=True), nullable=True),
