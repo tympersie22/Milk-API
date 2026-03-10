@@ -281,8 +281,8 @@ export function ConsoleApp() {
               <button disabled={!apiKey || !propertyId || loading} onClick={onRisk}>Risk</button>
               <button disabled={!apiKey || !propertyId || loading} onClick={onOwnership}>Ownership</button>
               <button disabled={!apiKey || !propertyId || loading} onClick={onOwnershipHistory}>History</button>
-              <button disabled={!apiKey || loading} onClick={onFullReportJson}>Report JSON</button>
-              <button disabled={!apiKey || loading} onClick={onFullReportPdf}>Report PDF</button>
+              <button disabled={!apiKey || loading} onClick={onFullReportJson}>Download JSON</button>
+              <button disabled={!apiKey || loading} onClick={onFullReportPdf}>Download PDF</button>
             </div>
             <p className="token">Property ID: {propertyId || "-"}</p>
           </div>
