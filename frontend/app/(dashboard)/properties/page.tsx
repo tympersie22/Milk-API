@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useAuth } from "../../../context/auth-context";
-import { apiRequest, runApi, type ApiEnvelope, type Json, type Region, type ReportFormat } from "../../../lib/api";
+import { apiRequest, runApi, isRateLimited, getRetryAfter, type ApiEnvelope, type Json, type Region, type ReportFormat } from "../../../lib/api";
 import { PageHeader } from "../../../components/layout/page-header";
 import { Card } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
@@ -20,7 +20,9 @@ import {
   IconActivity,
   IconCheck,
   IconAlertTriangle,
+  IconMap,
 } from "../../../components/ui/icons";
+import { PropertyMap } from "../../../components/properties/property-map";
 
 type PropertyResult = {
   id: string;
@@ -59,9 +61,20 @@ export default function PropertiesPage() {
     finally { setLoading(false); setActiveAction(""); }
   };
 
+  /** Check rate limit on every response and show user-friendly message */
+  const checkRateLimit = (payload: ApiEnvelope | null): boolean => {
+    if (isRateLimited(payload)) {
+      const secs = getRetryAfter(payload);
+      toast(`Rate limit reached. Please wait ${secs}s before trying again.`, "error");
+      return true;
+    }
+    return false;
+  };
+
   const onSearch = () => withLoading("search", async () => {
     const q = `/property/search?title_number=${encodeURIComponent(titleNumber)}&region=${encodeURIComponent(region)}`;
     const payload = await runApi(() => apiRequest(q, { apiKey }));
+    if (checkRateLimit(payload)) return;
     if (payload && typeof payload.status === "number" && payload.status < 300) {
       const rows = (payload.data.data as PropertyResult[]) || [];
       if (rows[0]?.id) {
@@ -298,6 +311,22 @@ export default function PropertiesPage() {
           </div>
         </Card>
       )}
+
+      {/* Map */}
+      <Card padding="md" className="mb-6">
+        <div className="card-header">
+          <h3 className="card-title flex items-center gap-2"><IconMap size={16} /> Location</h3>
+        </div>
+        <PropertyMap
+          markers={property ? [{
+            lat: (property as Record<string, unknown>).latitude as number || -6.165,
+            lng: (property as Record<string, unknown>).longitude as number || 39.199,
+            title: property.title_number,
+            popup: `<strong>${property.title_number}</strong><br/>${property.region}`,
+          }] : []}
+          height="300px"
+        />
+      </Card>
 
       {!property && !loading && (
         <Card padding="lg">

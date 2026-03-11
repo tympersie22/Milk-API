@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/auth-context";
-import { apiRequest, type Json } from "../../lib/api";
+import { apiRequest, type UsageResponse, type ReportListItem } from "../../lib/api";
+import { OnboardingWizard, hasCompletedOnboarding } from "../../components/onboarding/onboarding-wizard";
 import { PageHeader } from "../../components/layout/page-header";
 import { StatCard } from "../../components/ui/stat-card";
 import { Card } from "../../components/ui/card";
@@ -19,48 +21,47 @@ import {
   IconChevronRight,
 } from "../../components/ui/icons";
 import Link from "next/link";
-import type { ReportListItem } from "../../lib/api";
 
 export default function DashboardPage() {
   const { name, apiKey, token } = useAuth();
+  const router = useRouter();
   const [recentReports, setRecentReports] = useState<ReportListItem[]>([]);
-  const [usage, setUsage] = useState<Json | null>(null);
+  const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check onboarding status
+  useEffect(() => {
+    if (!hasCompletedOnboarding() && !apiKey) {
+      setShowOnboarding(true);
+    }
+  }, [apiKey]);
 
   const fetchDashboard = useCallback(async () => {
     if (!token && !apiKey) return;
     setLoading(true);
     try {
-      // Fetch usage stats (works with bearer token, always try this)
       if (token) {
         try {
           const usageRes = await apiRequest("/auth/usage", { token, timeoutMs: 15000 });
           if (usageRes.ok) {
-            const data = (await usageRes.json()) as Json;
+            const data = (await usageRes.json()) as UsageResponse;
             setUsage(data);
           }
-        } catch {
-          /* usage endpoint might not be available */
-        }
+        } catch { /* usage endpoint might not be available */ }
       }
 
-      // Fetch recent reports (requires API key)
       if (apiKey) {
         try {
           const reportsRes = await apiRequest("/reports?page=1&per_page=5", { apiKey, timeoutMs: 15000 });
           if (reportsRes.ok) {
-            const data = (await reportsRes.json()) as Json;
+            const data = await reportsRes.json();
             if (Array.isArray(data.data)) setRecentReports(data.data as ReportListItem[]);
           }
-        } catch {
-          /* reports endpoint might not be available */
-        }
+        } catch { /* reports endpoint might not be available */ }
       }
-    } catch {
-      /* silently fail for dashboard stats */
-    } finally {
-      setLoading(false);
-    }
+    } catch { /* silently fail */ }
+    finally { setLoading(false); }
   }, [apiKey, token]);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
@@ -86,7 +87,17 @@ export default function DashboardPage() {
         description="Here's an overview of your property intelligence activity."
       />
 
-      {/* Stats */}
+      {/* Onboarding */}
+      {showOnboarding && (
+        <div className="mb-6">
+          <OnboardingWizard
+            onComplete={() => { setShowOnboarding(false); fetchDashboard(); }}
+            onSkip={() => router.push("/properties")}
+          />
+        </div>
+      )}
+
+      {/* Stats — aligned to UsageResponse: requests_this_month, quota, tier, reset_at */}
       <div className="stat-grid mb-6">
         <StatCard
           label="Reports Generated"
@@ -95,13 +106,13 @@ export default function DashboardPage() {
         />
         <StatCard
           label="API Requests"
-          value={loading ? "..." : usage?.requests_used != null ? String(usage.requests_used) : (usage?.requests_this_month != null ? String(usage.requests_this_month) : "0")}
+          value={loading ? "..." : usage ? String(usage.requests_this_month) : "0"}
           icon={<IconActivity size={18} />}
-          trend={usage?.monthly_limit ? `/ ${usage.monthly_limit} limit` : undefined}
+          trend={usage ? `/ ${usage.quota} quota` : undefined}
         />
         <StatCard
           label="API Tier"
-          value={loading ? "..." : typeof usage?.tier === "string" ? usage.tier.charAt(0).toUpperCase() + usage.tier.slice(1) : "Free"}
+          value={loading ? "..." : usage?.tier ? usage.tier.charAt(0).toUpperCase() + usage.tier.slice(1) : "Free"}
           icon={<IconShield size={18} />}
         />
         <StatCard
@@ -171,7 +182,7 @@ export default function DashboardPage() {
                       {r.region === "zanzibar" ? "Zanzibar" : "Mainland"}
                     </Badge>
                   </td>
-                  <td className="font-mono text-xs">{r.requested_format.toUpperCase()}</td>
+                  <td className="font-mono text-xs">{r.format.toUpperCase()}</td>
                   <td>{statusBadge(r.status)}</td>
                   <td className="text-sm text-secondary">{formatDate(r.created_at)}</td>
                 </tr>

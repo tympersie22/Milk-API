@@ -558,6 +558,26 @@
   border: 1px solid var(--color-primary-border);
 }
 
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.theme-toggle:hover {
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+  border-color: var(--color-text-tertiary);
+}
+
 /* --- Page Header --- */
 .page-header {
   display: flex;
@@ -776,6 +796,65 @@
 .skeleton-text { height: 14px; width: 80%; }
 .skeleton-heading { height: 24px; width: 60%; }
 .skeleton-card { height: 120px; border-radius: var(--radius-lg); }
+
+/* --- Onboarding --- */
+.onboarding-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.onboarding-step.step-current {
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary-border);
+}
+
+.onboarding-step-indicator {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  border: 2px solid var(--color-border);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+}
+
+.step-complete .onboarding-step-indicator {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.step-current .onboarding-step-indicator {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.onboarding-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.onboarding-action {
+  padding: 16px 20px;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-md);
+}
 
 /* --- Responsive --- */
 @media (max-width: 768px) {

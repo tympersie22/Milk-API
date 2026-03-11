@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useAuth } from "../../../context/auth-context";
-import { apiRequest, type Json, type Region, type ReportFormat, type ReportStatus, type ReportListItem } from "../../../lib/api";
+import { apiRequest, type Json, type Region, type ReportFormat, type ReportStatus, type ReportListItem, type PaginationMeta } from "../../../lib/api";
 import { PageHeader } from "../../../components/layout/page-header";
 import { Card } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
@@ -17,6 +17,9 @@ export default function ReportsPage() {
   const { toast } = useToast();
 
   const [reports, setReports] = useState<ReportListItem[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  const [page, setPage] = useState(1);
+  const perPage = 20;
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -27,7 +30,7 @@ export default function ReportsPage() {
   const [filterFormat, setFilterFormat] = useState<"" | ReportFormat>("");
   const [filterTitle, setFilterTitle] = useState("");
 
-  const loadReports = useCallback(async () => {
+  const loadReports = useCallback(async (targetPage = page) => {
     if (!apiKey) { toast("Set up an API key in Settings first.", "error"); return; }
     setLoading(true);
     try {
@@ -36,13 +39,15 @@ export default function ReportsPage() {
       if (filterRegion) params.set("region", filterRegion);
       if (filterFormat) params.set("format", filterFormat);
       if (filterTitle.trim()) params.set("title_number", filterTitle.trim());
-      params.set("page", "1");
-      params.set("per_page", "50");
+      params.set("page", String(targetPage));
+      params.set("per_page", String(perPage));
 
       const res = await apiRequest(`/reports?${params.toString()}`, { apiKey, timeoutMs: 30000 });
       const data = (await res.json()) as Json;
       if (res.ok && Array.isArray(data.data)) {
         setReports(data.data as ReportListItem[]);
+        if (data.pagination) setPagination(data.pagination as PaginationMeta);
+        setPage(targetPage);
         setLoaded(true);
       } else {
         toast("Failed to load reports.", "error");
@@ -52,7 +57,14 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiKey, filterFormat, filterRegion, filterStatus, filterTitle, toast]);
+  }, [apiKey, filterFormat, filterRegion, filterStatus, filterTitle, page, toast]);
+
+  const totalPages = pagination ? Math.ceil(pagination.total / perPage) : 1;
+
+  const goToPage = (p: number) => {
+    if (p < 1 || p > totalPages) return;
+    loadReports(p);
+  };
 
   const download = async (reportId: string, format: ReportFormat) => {
     setDownloading(reportId);
@@ -95,7 +107,7 @@ export default function ReportsPage() {
         title="Reports"
         description="View and download your property intelligence reports."
         actions={
-          <Button onClick={loadReports} loading={loading} icon={<IconRefresh size={16} />}>
+          <Button onClick={() => loadReports()} loading={loading} icon={<IconRefresh size={16} />}>
             {loaded ? "Refresh" : "Load Reports"}
           </Button>
         }
@@ -136,7 +148,7 @@ export default function ReportsPage() {
           </label>
         </div>
         <div className="mt-3">
-          <Button variant="secondary" size="sm" onClick={loadReports} loading={loading}>
+          <Button variant="secondary" size="sm" onClick={() => loadReports()} loading={loading}>
             Apply Filters
           </Button>
         </div>
@@ -157,62 +169,84 @@ export default function ReportsPage() {
             description="No reports match your filters. Try adjusting them or generate a report from the Properties page."
           />
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Title Number</th>
-                  <th>Region</th>
-                  <th>Format</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map(r => (
-                  <tr key={r.report_id}>
-                    <td>
-                      <div className="font-medium">{r.title_number}</div>
-                      <div className="font-mono text-xs text-tertiary mt-1">{r.report_id}</div>
-                    </td>
-                    <td>
-                      <Badge variant={r.region === "zanzibar" ? "info" : "neutral"}>
-                        {r.region === "zanzibar" ? "Zanzibar" : "Mainland"}
-                      </Badge>
-                    </td>
-                    <td><span className="font-mono text-xs">{r.requested_format.toUpperCase()}</span></td>
-                    <td>{statusBadge(r.status)}</td>
-                    <td className="text-sm text-secondary">{formatDate(r.created_at)}</td>
-                    <td>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={r.status !== "completed" || downloading === r.report_id}
-                          loading={downloading === r.report_id}
-                          onClick={() => download(r.report_id, "json")}
-                          icon={<IconDownload size={14} />}
-                        >
-                          JSON
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={r.status !== "completed" || downloading === r.report_id}
-                          loading={downloading === r.report_id}
-                          onClick={() => download(r.report_id, "pdf")}
-                          icon={<IconDownload size={14} />}
-                        >
-                          PDF
-                        </Button>
-                      </div>
-                    </td>
+          <>
+            <div style={{ overflowX: "auto" }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Title Number</th>
+                    <th>Region</th>
+                    <th>Format</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {reports.map(r => (
+                    <tr key={r.report_id}>
+                      <td>
+                        <div className="font-medium">{r.title_number}</div>
+                        <div className="font-mono text-xs text-tertiary mt-1">{r.report_id}</div>
+                      </td>
+                      <td>
+                        <Badge variant={r.region === "zanzibar" ? "info" : "neutral"}>
+                          {r.region === "zanzibar" ? "Zanzibar" : "Mainland"}
+                        </Badge>
+                      </td>
+                      <td><span className="font-mono text-xs">{r.format.toUpperCase()}</span></td>
+                      <td>{statusBadge(r.status)}</td>
+                      <td className="text-sm text-secondary">{formatDate(r.created_at)}</td>
+                      <td>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={r.status !== "completed" || downloading === r.report_id}
+                            loading={downloading === r.report_id}
+                            onClick={() => download(r.report_id, "json")}
+                            icon={<IconDownload size={14} />}
+                          >
+                            JSON
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={r.status !== "completed" || downloading === r.report_id}
+                            loading={downloading === r.report_id}
+                            onClick={() => download(r.report_id, "pdf")}
+                            icon={<IconDownload size={14} />}
+                          >
+                            PDF
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {pagination && totalPages > 1 && (
+              <div className="flex items-center justify-between p-4" style={{ borderTop: "1px solid var(--color-border)" }}>
+                <span className="text-sm text-secondary">
+                  Showing {(page - 1) * perPage + 1}{"\u2013"}{Math.min(page * perPage, pagination.total)} of {pagination.total}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" disabled={page <= 1 || loading} onClick={() => goToPage(page - 1)}>
+                    Previous
+                  </Button>
+                  <span className="flex items-center text-sm px-3">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button variant="secondary" size="sm" disabled={page >= totalPages || loading} onClick={() => goToPage(page + 1)}>
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </Card>
     </>

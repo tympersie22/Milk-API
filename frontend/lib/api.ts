@@ -12,16 +12,105 @@ export type ApiEnvelope = {
 export type Region = "mainland" | "zanzibar";
 export type ReportStatus = "processing" | "completed" | "failed";
 export type ReportFormat = "json" | "pdf";
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+export type ApiTier = "free" | "basic" | "professional" | "enterprise";
+
+/* --- Auth responses (matches app/schemas/auth.py) --- */
+export type TokenResponse = {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
+};
+
+export type ApiKeyResponse = {
+  key: string;
+  prefix: string;
+  name: string;
+};
+
+export type UsageResponse = {
+  requests_this_month: number;
+  quota: number;
+  tier: ApiTier;
+  reset_at: string;
+};
+
+/* --- Property responses (matches app/schemas/property.py) --- */
+export type PropertySummary = {
+  id: string;
+  title_number: string;
+  region: Region;
+  district: string;
+  area_name: string;
+  land_type: string;
+  is_verified: boolean;
+};
+
+export type PaginationMeta = {
+  page: number;
+  per_page: number;
+  total: number;
+};
+
+export type PropertySearchResponse = {
+  data: PropertySummary[];
+  pagination: PaginationMeta;
+};
+
+export type VerifyResponse = {
+  title_number: string;
+  region: Region;
+  found: boolean;
+  verified: boolean;
+  data_source: string;
+  confidence: number;
+  message: string;
+};
+
+/* --- Risk responses (matches app/schemas/risk.py) --- */
+export type RiskFactor = {
+  score: number;
+  details: string;
+};
+
+export type RiskResponse = {
+  overall_score: number;
+  risk_level: RiskLevel;
+  factors: Record<string, RiskFactor>;
+  recommendations: string[];
+  valid_until: string;
+};
+
+/* --- Report responses (matches app/schemas/reports.py) --- */
+export type ReportCreateResponse = {
+  report_id: string;
+  status: ReportStatus;
+  estimated_seconds: number;
+  callback_url: string;
+  processing_mode: "queued" | "inline";
+};
 
 export type ReportListItem = {
   report_id: string;
   status: ReportStatus;
-  requested_format: ReportFormat;
+  format: ReportFormat;
   title_number: string;
   property_id: string;
   region: Region;
   created_at: string;
   completed_at?: string | null;
+};
+
+export type ReportListResponse = {
+  data: ReportListItem[];
+  pagination: PaginationMeta;
+};
+
+export type SignedDownloadResponse = {
+  download_url: string;
+  expires_at: string;
+  format: ReportFormat;
 };
 
 export async function apiRequest(
@@ -69,6 +158,22 @@ export async function runApi(
       data: { message: error instanceof Error ? error.message : "Unknown error" },
     };
   }
+}
+
+/** Check if an API response is a rate limit error */
+export function isRateLimited(payload: ApiEnvelope | null): boolean {
+  if (!payload) return false;
+  if (payload.status === 429) return true;
+  const error = (payload.data?.error as Json) || {};
+  return error.code === "RATE_LIMIT_EXCEEDED";
+}
+
+/** Get retry-after seconds from a rate limit response */
+export function getRetryAfter(payload: ApiEnvelope | null): number {
+  if (!payload) return 60;
+  const error = (payload.data?.error as Json) || {};
+  const retryAfter = error.retry_after ?? payload.data?.retry_after;
+  return typeof retryAfter === "number" ? retryAfter : 60;
 }
 
 export function getErrorHint(payload: ApiEnvelope | null): string {

@@ -2,22 +2,21 @@
 
 import { useState } from "react";
 import { useAuth } from "../../../context/auth-context";
-import { apiRequest, type Json } from "../../../lib/api";
+import { apiRequest, API_BASE, type UsageResponse } from "../../../lib/api";
 import { PageHeader } from "../../../components/layout/page-header";
 import { Card } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
 import { useToast } from "../../../components/ui/toast";
-import { copyToClipboard, truncate } from "../../../lib/utils";
-import { IconKey, IconCopy, IconRefresh, IconShield, IconActivity } from "../../../components/ui/icons";
-import { API_BASE } from "../../../lib/api";
+import { copyToClipboard, truncate, formatDate } from "../../../lib/utils";
+import { IconKey, IconCopy, IconRefresh, IconShield } from "../../../components/ui/icons";
 
 export default function SettingsPage() {
-  const { token, apiKey, email, name, generateApiKey, setApiKey } = useAuth();
+  const { token, apiKey, email, name, generateApiKey } = useAuth();
   const { toast } = useToast();
 
   const [generating, setGenerating] = useState(false);
-  const [usage, setUsage] = useState<Json | null>(null);
+  const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(false);
 
   const onGenerateKey = async () => {
@@ -48,7 +47,7 @@ export default function SettingsPage() {
     try {
       const res = await apiRequest("/auth/usage", { token, timeoutMs: 15000 });
       if (res.ok) {
-        const data = (await res.json()) as Json;
+        const data = (await res.json()) as UsageResponse;
         setUsage(data);
       } else {
         toast("Failed to load usage data.", "error");
@@ -138,10 +137,10 @@ export default function SettingsPage() {
         )}
       </Card>
 
-      {/* Usage Stats */}
+      {/* Usage Stats — aligned to UsageResponse: requests_this_month, quota, tier, reset_at */}
       <Card padding="md">
         <div className="card-header">
-          <h3 className="card-title">Usage & Quotas</h3>
+          <h3 className="card-title">Usage &amp; Quotas</h3>
           <Button variant="secondary" size="sm" onClick={loadUsage} loading={loadingUsage} icon={<IconRefresh size={14} />}>
             Load Usage
           </Button>
@@ -151,23 +150,23 @@ export default function SettingsPage() {
           <div className="form-row">
             <div className="form-group">
               <span className="form-group-label">Tier</span>
-              <Badge variant="info">{String(usage.tier || "—")}</Badge>
+              <Badge variant="info">{usage.tier.charAt(0).toUpperCase() + usage.tier.slice(1)}</Badge>
             </div>
             <div className="form-group">
-              <span className="form-group-label">Requests Used</span>
-              <p className="font-semibold">{String(usage.requests_used ?? "—")}</p>
+              <span className="form-group-label">Requests This Month</span>
+              <p className="font-semibold">{usage.requests_this_month}</p>
             </div>
             <div className="form-group">
-              <span className="form-group-label">Monthly Limit</span>
-              <p className="font-semibold">{String(usage.monthly_limit ?? "—")}</p>
+              <span className="form-group-label">Monthly Quota</span>
+              <p className="font-semibold">{usage.quota.toLocaleString()}</p>
             </div>
             <div className="form-group">
-              <span className="form-group-label">Rate Limit</span>
-              <p className="font-semibold">{String(usage.rate_limit_per_min ?? "—")} req/min</p>
+              <span className="form-group-label">Resets At</span>
+              <p className="font-semibold">{formatDate(usage.reset_at)}</p>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-secondary">Click "Load Usage" to view your current quota and usage statistics.</p>
+          <p className="text-sm text-secondary">Click &quot;Load Usage&quot; to view your current quota and usage statistics.</p>
         )}
       </Card>
     </>
