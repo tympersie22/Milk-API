@@ -2,7 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { useAuth } from "../../../context/auth-context";
-import { apiRequest, runApi, isRateLimited, getRetryAfter, type ApiEnvelope, type Json, type Region, type ReportFormat } from "../../../lib/api";
+import { apiRequest, runApi, isRateLimited, getRetryAfter, type ApiEnvelope, type Json, type Region, type ReportFormat, type RiskResponse } from "../../../lib/api";
+import { RiskVisualization } from "../../../components/properties/risk-visualization";
 import { PageHeader } from "../../../components/layout/page-header";
 import { Card } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
@@ -10,6 +11,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Modal } from "../../../components/ui/modal";
 import { CodeBlock } from "../../../components/ui/code-block";
 import { EmptyState } from "../../../components/ui/empty-state";
+import { Skeleton } from "../../../components/ui/skeleton";
 import { useToast } from "../../../components/ui/toast";
 import {
   IconSearch,
@@ -23,6 +25,8 @@ import {
   IconMap,
 } from "../../../components/ui/icons";
 import { PropertyMap } from "../../../components/properties/property-map";
+import { useSearchHistory } from "../../../hooks/use-search-history";
+import { IconStar, IconStarFilled, IconClock, IconTrash } from "../../../components/ui/icons";
 
 type PropertyResult = {
   id: string;
@@ -34,6 +38,8 @@ type PropertyResult = {
 export default function PropertiesPage() {
   const { apiKey } = useAuth();
   const { toast } = useToast();
+  const { history, favorites, addSearch, toggleFavorite, removeItem, clearHistory } = useSearchHistory();
+  const [showHistory, setShowHistory] = useState(false);
 
   const [titleNumber, setTitleNumber] = useState("ZNZ-NGW-0001");
   const [region, setRegion] = useState<Region>("zanzibar");
@@ -41,6 +47,7 @@ export default function PropertiesPage() {
   const [activeAction, setActiveAction] = useState("");
 
   const [property, setProperty] = useState<PropertyResult | null>(null);
+  const [riskData, setRiskData] = useState<RiskResponse | null>(null);
   const [responseModal, setResponseModal] = useState(false);
   const [lastResponse, setLastResponse] = useState<ApiEnvelope | null>(null);
   const [lastResponseTitle, setLastResponseTitle] = useState("");
@@ -79,9 +86,11 @@ export default function PropertiesPage() {
       const rows = (payload.data.data as PropertyResult[]) || [];
       if (rows[0]?.id) {
         setProperty(rows[0]);
+        addSearch(titleNumber, region, rows[0].id);
         toast("Property found!", "success");
       } else {
         setProperty(null);
+        addSearch(titleNumber, region);
         toast("No matching property found.", "info");
       }
     }
@@ -105,6 +114,9 @@ export default function PropertiesPage() {
   const onRisk = () => withLoading("risk", async () => {
     if (!property?.id) return;
     const payload = await runApi(() => apiRequest(`/property/${property.id}/risk`, { apiKey }));
+    if (payload && typeof payload.status === "number" && payload.status < 300) {
+      setRiskData(payload.data as unknown as RiskResponse);
+    }
     showResult("Risk Assessment", payload);
   });
 
@@ -236,7 +248,80 @@ export default function PropertiesPage() {
             Verify
           </Button>
         </div>
+        <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)} icon={<IconClock size={14} />}>
+          {showHistory ? "Hide History" : "History"} ({history.length})
+        </Button>
       </Card>
+
+      {/* Search History & Favorites */}
+      {showHistory && (
+        <Card padding="md" className="mb-6 animate-slideUp">
+          <div className="card-header">
+            <h3 className="card-title flex items-center gap-2">
+              <IconClock size={16} /> Search History
+            </h3>
+            {history.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearHistory}>Clear All</Button>
+            )}
+          </div>
+
+          {favorites.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
+                <IconStarFilled size={14} style={{ color: "var(--color-accent)" }} /> Favorites
+              </h4>
+              <div className="flex flex-col gap-1">
+                {favorites.map(item => (
+                  <div key={item.id} className="flex items-center gap-2 p-2" style={{ borderRadius: "var(--radius-sm)", background: "var(--color-accent-light)" }}>
+                    <button onClick={() => toggleFavorite(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-accent)" }}>
+                      <IconStarFilled size={14} />
+                    </button>
+                    <button
+                      className="flex-1 text-left text-sm"
+                      style={{ background: "none", border: "none", cursor: "pointer" }}
+                      onClick={() => { setTitleNumber(item.title_number); setRegion(item.region as Region); }}
+                    >
+                      <span className="font-medium">{item.title_number}</span>
+                      <span className="text-tertiary ml-2">{item.region}</span>
+                    </button>
+                    <button onClick={() => removeItem(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}>
+                      <IconTrash size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {history.length === 0 ? (
+            <p className="text-sm text-secondary">No search history yet. Your searches will appear here.</p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {history.filter(h => !h.favorited).slice(0, 15).map(item => (
+                <div key={item.id} className="flex items-center gap-2 p-2" style={{ borderRadius: "var(--radius-sm)" }}>
+                  <button onClick={() => toggleFavorite(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}>
+                    <IconStar size={14} />
+                  </button>
+                  <button
+                    className="flex-1 text-left text-sm"
+                    style={{ background: "none", border: "none", cursor: "pointer" }}
+                    onClick={() => { setTitleNumber(item.title_number); setRegion(item.region as Region); }}
+                  >
+                    <span className="font-medium">{item.title_number}</span>
+                    <span className="text-tertiary ml-2">{item.region}</span>
+                    <span className="text-tertiary ml-2 text-xs">
+                      {new Date(item.timestamp).toLocaleDateString()}
+                    </span>
+                  </button>
+                  <button onClick={() => removeItem(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}>
+                    <IconTrash size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Property Result */}
       {property && (
@@ -312,6 +397,13 @@ export default function PropertiesPage() {
         </Card>
       )}
 
+      {/* Risk Visualization */}
+      {riskData && (
+        <div className="mb-6 animate-slideUp">
+          <RiskVisualization risk={riskData} />
+        </div>
+      )}
+
       {/* Map */}
       <Card padding="md" className="mb-6">
         <div className="card-header">
@@ -327,6 +419,16 @@ export default function PropertiesPage() {
           height="300px"
         />
       </Card>
+
+      {!property && loading && (
+        <Card padding="lg">
+          <div className="flex flex-col gap-3">
+            <Skeleton width="45%" height="24px" />
+            <Skeleton width="100%" height="16px" />
+            <Skeleton width="100%" height="16px" />
+          </div>
+        </Card>
+      )}
 
       {!property && !loading && (
         <Card padding="lg">

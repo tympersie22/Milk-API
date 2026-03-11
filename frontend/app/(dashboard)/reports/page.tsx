@@ -10,7 +10,9 @@ import { Badge } from "../../../components/ui/badge";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { useToast } from "../../../components/ui/toast";
 import { formatDate } from "../../../lib/utils";
-import { IconFileText, IconDownload, IconRefresh } from "../../../components/ui/icons";
+import { IconFileText, IconDownload, IconRefresh, IconBarChart } from "../../../components/ui/icons";
+import { exportReportsCSV } from "../../../lib/csv-export";
+import { Skeleton } from "../../../components/ui/skeleton";
 
 export default function ReportsPage() {
   const { apiKey } = useAuth();
@@ -107,9 +109,16 @@ export default function ReportsPage() {
         title="Reports"
         description="View and download your property intelligence reports."
         actions={
-          <Button onClick={() => loadReports()} loading={loading} icon={<IconRefresh size={16} />}>
-            {loaded ? "Refresh" : "Load Reports"}
-          </Button>
+          <div className="flex gap-2">
+            {loaded && reports.length > 0 && (
+              <Button variant="secondary" onClick={() => exportReportsCSV(reports)} icon={<IconDownload size={16} />}>
+                Export CSV
+              </Button>
+            )}
+            <Button onClick={() => loadReports()} loading={loading} icon={<IconRefresh size={16} />}>
+              {loaded ? "Refresh" : "Load Reports"}
+            </Button>
+          </div>
         }
       />
 
@@ -156,7 +165,15 @@ export default function ReportsPage() {
 
       {/* Reports Table */}
       <Card padding="sm">
-        {!loaded ? (
+        {loading && !loaded ? (
+          <div className="p-4">
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <Skeleton key={idx} width="100%" height="52px" />
+              ))}
+            </div>
+          </div>
+        ) : !loaded ? (
           <EmptyState
             icon={<IconFileText size={24} />}
             title="Load your reports"

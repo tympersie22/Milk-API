@@ -10,6 +10,7 @@ import { Badge } from "../../../components/ui/badge";
 import { useToast } from "../../../components/ui/toast";
 import { copyToClipboard, truncate, formatDate } from "../../../lib/utils";
 import { IconKey, IconCopy, IconRefresh, IconShield } from "../../../components/ui/icons";
+import { Skeleton } from "../../../components/ui/skeleton";
 
 export default function SettingsPage() {
   const { token, apiKey, email, name, generateApiKey } = useAuth();
@@ -146,7 +147,13 @@ export default function SettingsPage() {
           </Button>
         </div>
 
-        {usage ? (
+        {loadingUsage && !usage ? (
+          <div className="form-row">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <Skeleton key={idx} width="100%" height="62px" />
+            ))}
+          </div>
+        ) : usage ? (
           <div className="form-row">
             <div className="form-group">
               <span className="form-group-label">Tier</span>

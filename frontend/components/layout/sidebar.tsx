@@ -12,12 +12,16 @@ import {
   IconLogOut,
   IconMap,
   IconShield,
+  IconColumns,
+  IconUser,
 } from "../ui/icons";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: IconHome },
   { href: "/properties", label: "Properties", icon: IconSearch },
+  { href: "/compare", label: "Compare", icon: IconColumns },
   { href: "/reports", label: "Reports", icon: IconFileText },
+  { href: "/profile", label: "Profile", icon: IconUser },
   { href: "/settings", label: "Settings", icon: IconSettings },
 ];
 
@@ -35,7 +39,7 @@ export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => voi
       {/* Mobile overlay */}
       {open && <div className="sidebar-overlay" onClick={onClose} />}
 
-      <aside className={cn("sidebar", open && "sidebar-open")}>
+      <aside className={cn("sidebar", open && "sidebar-open")} role="navigation" aria-label="Main navigation">
         {/* Logo */}
         <div className="sidebar-logo">
           <div className="sidebar-logo-mark">

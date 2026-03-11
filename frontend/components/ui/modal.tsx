@@ -29,10 +29,11 @@ export function Modal({ open, onClose, title, children, wide, actions }: ModalPr
   if (!open) return null;
 
   return (
-    <div className="modal-overlay animate-fadeIn" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="modal-overlay animate-fadeIn" onClick={onClose} role="dialog" aria-modal="true" aria-label={title || "Dialog"}>
       <div
         className={cn("modal-panel animate-slideUp", wide && "modal-wide")}
         onClick={e => e.stopPropagation()}
+        tabIndex={-1}
       >
         {title && (
           <div className="modal-header">

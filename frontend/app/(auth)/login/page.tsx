@@ -7,19 +7,27 @@ import { useAuth } from "../../../context/auth-context";
 import { Card } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { IconMap, IconEye, IconEyeOff } from "../../../components/ui/icons";
+import { validateLoginForm, type ValidationError } from "../../../lib/validation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<ValidationError[]>([]);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
+  const getFieldError = (field: string) => fieldErrors.find(e => e.field === field)?.message;
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
+    const validation = validateLoginForm(email, password);
+    setFieldErrors(validation.errors);
+    if (!validation.valid) return;
+
     setLoading(true);
     const result = await login(email, password);
     setLoading(false);
@@ -54,7 +62,12 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 required
                 autoFocus
+                aria-invalid={!!getFieldError("email")}
+                aria-describedby={getFieldError("email") ? "email-error" : undefined}
               />
+              {getFieldError("email") && (
+                <span id="email-error" className="form-field-error">{getFieldError("email")}</span>
+              )}
             </label>
 
             <label>
@@ -66,6 +79,7 @@ export default function LoginPage() {
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
+                  aria-invalid={!!getFieldError("password")}
                 />
                 <button
                   type="button"

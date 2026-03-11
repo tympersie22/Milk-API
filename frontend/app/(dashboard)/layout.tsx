@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/auth-context";
 import { Sidebar } from "../../components/layout/sidebar";
 import { Topbar } from "../../components/layout/topbar";
+import { Skeleton } from "../../components/ui/skeleton";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -27,23 +28,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Show nothing while checking auth to prevent flash
   if (!hydrated || !isAuthenticated) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        <div className="animate-pulse" style={{
-          display: "flex", flexDirection: "column", alignItems: "center",
-          gap: 12, color: "var(--color-text-tertiary)",
-        }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: "var(--radius-lg)",
-            background: "var(--color-primary)", display: "flex",
-            alignItems: "center", justifyContent: "center", color: "white",
-            fontSize: 18, fontWeight: 700,
-          }}>M</div>
-          <span className="text-sm">Loading...</span>
+      <div className="dashboard-shell">
+        <div className="sidebar" />
+        <div className="dashboard-main">
+          <div className="topbar" />
+          <main className="dashboard-content">
+            <Skeleton width="240px" height="32px" className="mb-2" />
+            <Skeleton width="380px" height="14px" className="mb-6" />
+            <div className="stat-grid">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <Skeleton key={idx} width="100%" height="120px" />
+              ))}
+            </div>
+          </main>
         </div>
       </div>
     );
@@ -51,10 +48,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="dashboard-shell">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="dashboard-main">
         <Topbar onMenuClick={() => setSidebarOpen(prev => !prev)} />
-        <main className="dashboard-content animate-fadeIn">
+        <main id="main-content" className="dashboard-content animate-fadeIn" role="main" aria-label="Dashboard content">
           {children}
         </main>
       </div>
