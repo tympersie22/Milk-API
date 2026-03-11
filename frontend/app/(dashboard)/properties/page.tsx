@@ -1,0 +1,333 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { useAuth } from "../../../context/auth-context";
+import { apiRequest, runApi, type ApiEnvelope, type Json, type Region, type ReportFormat } from "../../../lib/api";
+import { PageHeader } from "../../../components/layout/page-header";
+import { Card } from "../../../components/ui/card";
+import { Button } from "../../../components/ui/button";
+import { Badge } from "../../../components/ui/badge";
+import { Modal } from "../../../components/ui/modal";
+import { CodeBlock } from "../../../components/ui/code-block";
+import { EmptyState } from "../../../components/ui/empty-state";
+import { useToast } from "../../../components/ui/toast";
+import {
+  IconSearch,
+  IconShield,
+  IconUsers,
+  IconFileText,
+  IconDownload,
+  IconActivity,
+  IconCheck,
+  IconAlertTriangle,
+} from "../../../components/ui/icons";
+
+type PropertyResult = {
+  id: string;
+  title_number: string;
+  region: string;
+  [key: string]: unknown;
+};
+
+export default function PropertiesPage() {
+  const { apiKey } = useAuth();
+  const { toast } = useToast();
+
+  const [titleNumber, setTitleNumber] = useState("ZNZ-NGW-0001");
+  const [region, setRegion] = useState<Region>("zanzibar");
+  const [loading, setLoading] = useState(false);
+  const [activeAction, setActiveAction] = useState("");
+
+  const [property, setProperty] = useState<PropertyResult | null>(null);
+  const [responseModal, setResponseModal] = useState(false);
+  const [lastResponse, setLastResponse] = useState<ApiEnvelope | null>(null);
+  const [lastResponseTitle, setLastResponseTitle] = useState("");
+
+  const showResult = (title: string, payload: ApiEnvelope | null) => {
+    if (!payload) return;
+    setLastResponse(payload);
+    setLastResponseTitle(title);
+    setResponseModal(true);
+  };
+
+  const withLoading = async (action: string, fn: () => Promise<void>) => {
+    if (!apiKey) { toast("Generate an API key in Settings first.", "error"); return; }
+    setLoading(true);
+    setActiveAction(action);
+    try { await fn(); }
+    catch (e) { toast(e instanceof Error ? e.message : "Request failed", "error"); }
+    finally { setLoading(false); setActiveAction(""); }
+  };
+
+  const onSearch = () => withLoading("search", async () => {
+    const q = `/property/search?title_number=${encodeURIComponent(titleNumber)}&region=${encodeURIComponent(region)}`;
+    const payload = await runApi(() => apiRequest(q, { apiKey }));
+    if (payload && typeof payload.status === "number" && payload.status < 300) {
+      const rows = (payload.data.data as PropertyResult[]) || [];
+      if (rows[0]?.id) {
+        setProperty(rows[0]);
+        toast("Property found!", "success");
+      } else {
+        setProperty(null);
+        toast("No matching property found.", "info");
+      }
+    }
+    showResult("Property Search", payload);
+  });
+
+  const onVerify = () => withLoading("verify", async () => {
+    const payload = await runApi(() =>
+      apiRequest("/property/verify", {
+        method: "POST",
+        apiKey,
+        body: JSON.stringify({ title_number: titleNumber, region }),
+      })
+    );
+    showResult("Property Verification", payload);
+    if (payload && typeof payload.status === "number" && payload.status < 300) {
+      toast("Property verified successfully.", "success");
+    }
+  });
+
+  const onRisk = () => withLoading("risk", async () => {
+    if (!property?.id) return;
+    const payload = await runApi(() => apiRequest(`/property/${property.id}/risk`, { apiKey }));
+    showResult("Risk Assessment", payload);
+  });
+
+  const onOwnership = () => withLoading("ownership", async () => {
+    if (!property?.id) return;
+    const payload = await runApi(() =>
+      apiRequest(`/property/${property.id}/ownership?consent_confirmed=true&legal_basis=consent`, { apiKey })
+    );
+    showResult("Ownership Details", payload);
+  });
+
+  const onHistory = () => withLoading("history", async () => {
+    if (!property?.id) return;
+    const payload = await runApi(() =>
+      apiRequest(`/property/${property.id}/ownership/history?consent_confirmed=true&legal_basis=contract`, { apiKey })
+    );
+    showResult("Ownership History", payload);
+  });
+
+  const onReport = (format: ReportFormat) => withLoading("report-" + format, async () => {
+    const body = property?.id
+      ? { property_id: property.id, format, include_risk: true }
+      : { title_number: titleNumber, region, format, include_risk: true };
+
+    const payload = await runApi(() =>
+      apiRequest("/reports/full", {
+        method: "POST",
+        apiKey,
+        timeoutMs: 60000,
+        body: JSON.stringify(body),
+      })
+    );
+
+    const reportId = payload?.data?.report_id;
+    if (typeof reportId !== "string") {
+      showResult("Report Generation", payload);
+      return;
+    }
+
+    toast("Report submitted. Polling for completion...", "info");
+
+    // Poll for completion
+    for (let i = 0; i < 25; i++) {
+      const poll = await runApi(() => apiRequest(`/reports/${reportId}`, { apiKey, timeoutMs: 60000 }));
+      const status = poll?.data?.status;
+      if (status === "completed") {
+        // Download
+        const signed = await apiRequest(`/reports/${reportId}/download-url?format=${format}`, { apiKey, timeoutMs: 30000 });
+        const signedData = (await signed.json()) as Json;
+        if (signed.ok && typeof signedData.download_url === "string") {
+          const fileRes = await fetch(signedData.download_url, { cache: "no-store" });
+          if (fileRes.ok) {
+            const blob = await fileRes.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `milki-report-${reportId}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            toast(`${format.toUpperCase()} report downloaded!`, "success");
+            return;
+          }
+        }
+        showResult("Report Download", { status: signed.status, data: signedData });
+        return;
+      }
+      if (status === "failed") {
+        toast("Report generation failed.", "error");
+        showResult("Report Failed", poll);
+        return;
+      }
+      await new Promise(r => setTimeout(r, 800));
+    }
+    toast("Report timed out. Check Reports page later.", "error");
+  });
+
+  const responseStatus = () => {
+    if (!lastResponse || typeof lastResponse.status !== "number") return "neutral" as const;
+    if (lastResponse.status < 300) return "success" as const;
+    if (lastResponse.status < 500) return "warning" as const;
+    return "error" as const;
+  };
+
+  return (
+    <>
+      <PageHeader
+        title="Properties"
+        description="Search, verify, and analyze property data across Tanzania."
+      />
+
+      {/* Search Section */}
+      <Card padding="md" className="mb-6">
+        <h3 className="card-title mb-4">Property Search</h3>
+        <div className="form-row mb-4">
+          <label>
+            Title Number
+            <input
+              value={titleNumber}
+              onChange={e => setTitleNumber(e.target.value)}
+              placeholder="e.g. ZNZ-NGW-0001"
+            />
+          </label>
+          <label>
+            Region
+            <select value={region} onChange={e => setRegion(e.target.value as Region)}>
+              <option value="mainland">Tanzania Mainland</option>
+              <option value="zanzibar">Zanzibar</option>
+            </select>
+          </label>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            onClick={onSearch}
+            loading={loading && activeAction === "search"}
+            disabled={loading || !titleNumber}
+            icon={<IconSearch size={16} />}
+          >
+            Search
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={onVerify}
+            loading={loading && activeAction === "verify"}
+            disabled={loading || !titleNumber}
+            icon={<IconCheck size={16} />}
+          >
+            Verify
+          </Button>
+        </div>
+      </Card>
+
+      {/* Property Result */}
+      {property && (
+        <Card padding="md" className="mb-6 animate-slideUp">
+          <div className="card-header">
+            <div>
+              <h3 className="card-title">{property.title_number}</h3>
+              <p className="text-sm text-secondary mt-1">Property ID: <span className="font-mono text-xs">{property.id}</span></p>
+            </div>
+            <Badge variant={property.region === "zanzibar" ? "info" : "neutral"}>
+              {property.region === "zanzibar" ? "Zanzibar" : "Mainland"}
+            </Badge>
+          </div>
+
+          <hr className="divider" />
+
+          <h4 className="mb-3">Analysis Tools</h4>
+          <div className="flex gap-2 flex-wrap mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRisk}
+              loading={loading && activeAction === "risk"}
+              disabled={loading}
+              icon={<IconAlertTriangle size={14} />}
+            >
+              Risk Assessment
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOwnership}
+              loading={loading && activeAction === "ownership"}
+              disabled={loading}
+              icon={<IconUsers size={14} />}
+            >
+              Ownership
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onHistory}
+              loading={loading && activeAction === "history"}
+              disabled={loading}
+              icon={<IconActivity size={14} />}
+            >
+              Ownership History
+            </Button>
+          </div>
+
+          <h4 className="mb-3">Generate Report</h4>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              size="sm"
+              onClick={() => onReport("json")}
+              loading={loading && activeAction === "report-json"}
+              disabled={loading}
+              icon={<IconDownload size={14} />}
+            >
+              Download JSON
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onReport("pdf")}
+              loading={loading && activeAction === "report-pdf"}
+              disabled={loading}
+              icon={<IconFileText size={14} />}
+            >
+              Download PDF
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {!property && !loading && (
+        <Card padding="lg">
+          <EmptyState
+            icon={<IconSearch size={24} />}
+            title="No property selected"
+            description="Search for a property above to see details, run risk analysis, and generate reports."
+          />
+        </Card>
+      )}
+
+      {/* Response Modal */}
+      <Modal
+        open={responseModal}
+        onClose={() => setResponseModal(false)}
+        title={lastResponseTitle}
+        wide
+        actions={
+          <div className="flex gap-2 justify-between items-center w-full">
+            <Badge variant={responseStatus()}>
+              {typeof lastResponse?.status === "number" ? `HTTP ${lastResponse.status}` : "Error"}
+            </Badge>
+            <Button variant="ghost" size="sm" onClick={() => setResponseModal(false)}>Close</Button>
+          </div>
+        }
+      >
+        <CodeBlock maxHeight="50vh">
+          {JSON.stringify(lastResponse, null, 2)}
+        </CodeBlock>
+      </Modal>
+    </>
+  );
+}

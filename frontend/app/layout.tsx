@@ -1,28 +1,32 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Sora } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import "./components.css";
+import { Providers } from "./providers";
 
-const sora = Sora({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-sora",
-  weight: ["400", "500", "600", "700"]
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
 });
 
-const mono = IBM_Plex_Mono({
+const mono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-mono",
-  weight: ["400", "500"]
+  variable: "--font-jetbrains",
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "Milki API Console",
-  description: "Browser console for Milki Tanzania Property Intelligence API"
+  title: "Milki — Property Intelligence",
+  description: "Tanzania property intelligence dashboard. Search, verify, and analyze property data.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${sora.variable} ${mono.variable}`}>{children}</body>
+      <body className={`${inter.variable} ${mono.variable}`}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
