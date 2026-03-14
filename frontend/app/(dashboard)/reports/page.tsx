@@ -211,7 +211,7 @@ export default function ReportsPage() {
                           {r.region === "zanzibar" ? "Zanzibar" : "Mainland"}
                         </Badge>
                       </td>
-                      <td><span className="font-mono text-xs">{r.format.toUpperCase()}</span></td>
+                      <td><span className="font-mono text-xs">{(r.requested_format || "json").toUpperCase()}</span></td>
                       <td>{statusBadge(r.status)}</td>
                       <td className="text-sm text-secondary">{formatDate(r.created_at)}</td>
                       <td>

@@ -1,7 +1,12 @@
+/**
+ * API base URL — routes through the Next.js proxy to avoid CORS issues.
+ * In next.config.mjs, `/api/v1/:path*` is rewritten to the backend.
+ * Only fall back to a direct URL if explicitly set via env vars.
+ */
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:8000/v1";
+  "/api/v1";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -97,7 +102,7 @@ export type ReportCreateResponse = {
 export type ReportListItem = {
   report_id: string;
   status: ReportStatus;
-  format: ReportFormat;
+  requested_format: ReportFormat;
   title_number: string;
   property_id: string;
   region: Region;
@@ -114,6 +119,44 @@ export type SignedDownloadResponse = {
   download_url: string;
   expires_at: string;
   format: ReportFormat;
+};
+
+/* --- Identify responses (matches app/schemas/identify.py) --- */
+export type IdentifyCandidate = {
+  property_id: string;
+  title_number: string;
+  region: Region;
+  district: string;
+  area_name: string | null;
+  land_type: string;
+  is_verified: boolean;
+  distance_meters: number;
+  confidence: number;
+  match_reasons: string[];
+  owner_anonymous: boolean;
+};
+
+export type IdentifyResponse = {
+  candidates: IdentifyCandidate[];
+  total_searched: number;
+  search_center: { lat: number; lng: number };
+  radius_meters: number;
+};
+
+/* --- Ownership responses (matches app/schemas/ownership.py) --- */
+export type OwnershipRecord = {
+  owner_name: string;
+  owner_type: string;
+  owner_nationality: string | null;
+  acquired_date: string | null;
+  acquisition_method: string | null;
+  transfer_ref: string | null;
+  is_current: boolean;
+  has_mortgage: boolean;
+  has_caveat: boolean;
+  has_lien: boolean;
+  encumbrance_details: Record<string, unknown> | null;
+  privacy_opt_out: boolean;
 };
 
 export async function apiRequest(

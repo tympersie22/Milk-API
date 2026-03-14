@@ -24,6 +24,8 @@ class PropertySummary(BaseModel):
     area_name: str | None = None
     land_type: str
     is_verified: bool
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class PropertySearchResponse(BaseModel):

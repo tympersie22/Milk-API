@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from io import BytesIO
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, type_coerce, Uuid as SAUuid
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.audit import write_audit_log
@@ -179,7 +179,10 @@ class ReportService:
         except ValueError as exc:
             raise ApiError(status_code=400, code="INVALID_REPORT_ID", message="Invalid report id") from exc
 
-        report = db.scalar(select(Report).where(Report.id == report_uuid, Report.user_id == UUID(user_id)))
+        report = db.scalar(select(Report).where(
+            Report.id == type_coerce(report_uuid, SAUuid()),
+            Report.user_id == type_coerce(UUID(user_id), SAUuid()),
+        ))
         if not report:
             raise ApiError(status_code=404, code="REPORT_NOT_FOUND", message="Report not found")
         return report
@@ -189,7 +192,7 @@ class ReportService:
         stmt = (
             select(Report)
             .join(Property, Property.id == Report.property_id)
-            .where(Report.user_id == UUID(user_id))
+            .where(Report.user_id == type_coerce(UUID(user_id), SAUuid()))
         )
 
         if query.status:

@@ -12,7 +12,7 @@ export function exportReportsCSV(reports: ReportListItem[], filename = "milki-re
     r.title_number,
     r.property_id,
     r.region,
-    r.format,
+    r.requested_format,
     r.status,
     formatDate(r.created_at),
     r.completed_at ? formatDate(r.completed_at) : "",

@@ -9,9 +9,12 @@ import {
   type ReactNode,
 } from "react";
 import { apiRequest, type Json } from "../lib/api";
+import { useTokenRefresh } from "../hooks/use-token-refresh";
 
 type AuthState = {
   token: string;
+  refreshToken: string;
+  expiresIn: number;
   apiKey: string;
   email: string;
   name: string;
@@ -53,6 +56,8 @@ function persistAuth(state: Partial<AuthState>) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     token: "",
+    refreshToken: "",
+    expiresIn: 3600,
     apiKey: "",
     email: "",
     name: "",
@@ -62,16 +67,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Hydrate from localStorage on mount
   useEffect(() => {
     const persisted = loadPersistedAuth();
-    if (persisted.token) {
+    if (persisted.token || persisted.apiKey) {
       setState({
         token: persisted.token || "",
+        refreshToken: persisted.refreshToken || "",
+        expiresIn: persisted.expiresIn || 3600,
         apiKey: persisted.apiKey || "",
         email: persisted.email || "",
         name: persisted.name || "",
         isAuthenticated: true,
       });
+    } else if (process.env.NODE_ENV === "development") {
+      // In dev mode, auto-load demo API key so the dashboard works immediately
+      const devState: AuthState = {
+        token: "",
+        refreshToken: "",
+        expiresIn: 3600,
+        apiKey: "mlk_live_demokey1234567890abcdef",
+        email: "demo@milki.co.tz",
+        name: "Demo User",
+        isAuthenticated: true,
+      };
+      setState(devState);
+      persistAuth(devState);
     }
   }, []);
+
+  // Auto-refresh token before expiry
+  const handleRefreshed = useCallback((newToken: string, newRefreshToken?: string) => {
+    setState(prev => {
+      const next = {
+        ...prev,
+        token: newToken,
+        refreshToken: newRefreshToken || prev.refreshToken,
+      };
+      persistAuth(next);
+      return next;
+    });
+  }, []);
+
+  const handleExpired = useCallback(() => {
+    // Token refresh failed — log user out
+    const empty: AuthState = {
+      token: "", refreshToken: "", expiresIn: 3600,
+      apiKey: "", email: "", name: "", isAuthenticated: false,
+    };
+    setState(empty);
+    if (typeof window !== "undefined") localStorage.removeItem(STORAGE_KEY);
+  }, []);
+
+  useTokenRefresh({
+    token: state.token,
+    refreshToken: state.refreshToken || undefined,
+    expiresIn: state.expiresIn || 3600,
+    onRefreshed: handleRefreshed,
+    onExpired: handleExpired,
+  });
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -85,6 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: String(err) };
       }
       const token = String(data.access_token || "");
+      const refreshToken = String(data.refresh_token || "");
+      const expiresIn = typeof data.expires_in === "number" ? data.expires_in : 3600;
 
       // Try to get user name from login response, or fall back to fetching usage/profile
       let userName = String(data.name || data.user_name || "");
@@ -109,6 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const newState: AuthState = {
         token,
+        refreshToken,
+        expiresIn,
         apiKey: state.apiKey,
         email,
         name: userName || state.name,
@@ -168,7 +223,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [state]);
 
   const logout = useCallback(() => {
-    const empty: AuthState = { token: "", apiKey: "", email: "", name: "", isAuthenticated: false };
+    const empty: AuthState = {
+      token: "", refreshToken: "", expiresIn: 3600,
+      apiKey: "", email: "", name: "", isAuthenticated: false,
+    };
     setState(empty);
     if (typeof window !== "undefined") localStorage.removeItem(STORAGE_KEY);
   }, []);

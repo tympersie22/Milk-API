@@ -23,3 +23,5 @@ class Ownership(Base, TimestampMixin):
     has_caveat: Mapped[bool] = mapped_column(Boolean, default=False)
     has_lien: Mapped[bool] = mapped_column(Boolean, default=False)
     encumbrance_details: Mapped[dict | None] = mapped_column(sa.JSON, nullable=True)
+    # Owner privacy: when True, owner identity is masked in API responses
+    privacy_opt_out: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")

@@ -14,11 +14,13 @@ import {
   IconShield,
   IconColumns,
   IconUser,
+  IconCrosshair,
 } from "../ui/icons";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: IconHome },
   { href: "/properties", label: "Properties", icon: IconSearch },
+  { href: "/identify", label: "Identify", icon: IconCrosshair },
   { href: "/compare", label: "Compare", icon: IconColumns },
   { href: "/reports", label: "Reports", icon: IconFileText },
   { href: "/profile", label: "Profile", icon: IconUser },

@@ -18,15 +18,15 @@ export function RiskVisualization({ risk }: RiskVisualizationProps) {
   };
 
   const scoreColor = (score: number) => {
-    if (score <= 30) return "var(--color-primary)";
-    if (score <= 60) return "var(--color-accent)";
+    if (score <= 3) return "var(--color-primary)";
+    if (score <= 6) return "var(--color-accent)";
     return "var(--color-danger)";
   };
 
   const factors = Object.entries(risk.factors).map(([key, value]) => ({
     label: key,
     score: value.score,
-    maxScore: 100,
+    maxScore: 10,
   }));
 
   return (
@@ -56,15 +56,15 @@ export function RiskVisualization({ risk }: RiskVisualizationProps) {
         <div>
           <div className="font-medium">Overall Risk Score</div>
           <div className="text-sm text-secondary">
-            {risk.overall_score <= 30 ? "Low risk — property appears safe" :
-             risk.overall_score <= 60 ? "Moderate risk — some concerns identified" :
+            {risk.overall_score <= 3 ? "Low risk — property appears safe" :
+             risk.overall_score <= 6 ? "Moderate risk — some concerns identified" :
              "High risk — significant issues detected"}
           </div>
         </div>
       </div>
 
-      {/* Radar Chart */}
-      {factors.length >= 3 && (
+      {/* Radar Chart (falls back to horizontal bars for < 3 factors) */}
+      {factors.length > 0 && (
         <div className="mb-4">
           <RadarChart
             factors={factors}
@@ -106,7 +106,7 @@ export function RiskVisualization({ risk }: RiskVisualizationProps) {
               overflow: "hidden",
             }}>
               <div style={{
-                width: `${factor.score}%`,
+                width: `${(factor.score / 10) * 100}%`,
                 height: "100%",
                 background: scoreColor(factor.score),
                 borderRadius: 3,

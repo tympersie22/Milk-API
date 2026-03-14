@@ -110,12 +110,16 @@ export function PropertyMap({ markers, center, zoom, height = "320px" }: Propert
       });
 
       if (bounds.length === 1) {
-        map.setView(bounds[0], 14);
+        map.setView(bounds[0], zoom || 15);
+        // Open the popup automatically for single markers
+        map.eachLayer((layer: any) => {
+          if (layer.openPopup) layer.openPopup();
+        });
       } else if (bounds.length > 1) {
         map.fitBounds(bounds as [[number, number], [number, number]], { padding: [40, 40] });
       }
     }
-  }, [markers, ready]);
+  }, [markers, ready, zoom]);
 
   // Cleanup
   useEffect(() => {

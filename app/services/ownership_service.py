@@ -1,5 +1,5 @@
 from uuid import UUID
-from sqlalchemy import func, select
+from sqlalchemy import func, select, type_coerce, Uuid as SAUuid
 from sqlalchemy.orm import Session
 
 from app.core.encryption import decrypt_text
@@ -9,11 +9,16 @@ DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
 
 
+def _coerce_uuid(value: str) -> type_coerce:
+    """Ensure UUID comparison goes through SQLAlchemy's Uuid type processor (fixes SQLite)."""
+    return type_coerce(UUID(value), SAUuid())
+
+
 class OwnershipService:
     @staticmethod
     def get_current(db: Session, property_id: str) -> Ownership | None:
         stmt = select(Ownership).where(
-            Ownership.property_id == UUID(property_id), Ownership.is_current.is_(True)
+            Ownership.property_id == _coerce_uuid(property_id), Ownership.is_current.is_(True)
         )
         return db.scalar(stmt)
 
@@ -24,7 +29,7 @@ class OwnershipService:
         limit: int = DEFAULT_PAGE_SIZE,
         offset: int = 0,
     ) -> tuple[list[Ownership], int]:
-        base = select(Ownership).where(Ownership.property_id == UUID(property_id))
+        base = select(Ownership).where(Ownership.property_id == _coerce_uuid(property_id))
 
         total = db.scalar(
             select(func.count()).select_from(base.subquery())
@@ -36,10 +41,20 @@ class OwnershipService:
 
     @staticmethod
     def to_record(row: Ownership) -> dict:
+        privacy = getattr(row, "privacy_opt_out", False) or False
+
+        # Mask owner identity if they've opted out
+        if privacy:
+            owner_name = "Anonymous Owner"
+            nationality = None
+        else:
+            owner_name = decrypt_text(row.owner_name_encrypted)
+            nationality = row.owner_nationality
+
         return {
-            "owner_name": decrypt_text(row.owner_name_encrypted),
+            "owner_name": owner_name,
             "owner_type": row.owner_type,
-            "owner_nationality": row.owner_nationality,
+            "owner_nationality": nationality,
             "acquired_date": row.acquired_date,
             "acquisition_method": row.acquisition_method,
             "transfer_ref": row.transfer_ref,
@@ -48,4 +63,5 @@ class OwnershipService:
             "has_caveat": row.has_caveat,
             "has_lien": row.has_lien,
             "encumbrance_details": row.encumbrance_details,
+            "privacy_opt_out": privacy,
         }

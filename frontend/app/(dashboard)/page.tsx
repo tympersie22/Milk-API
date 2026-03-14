@@ -73,20 +73,21 @@ export default function DashboardPage() {
 
       if (apiKey) {
         try {
-          const reportsRes = await apiRequest("/reports?page=1&per_page=5", { apiKey, timeoutMs: 15000 });
-          if (reportsRes.ok) {
-            const data = await reportsRes.json();
-            if (Array.isArray(data.data)) setRecentReports(data.data as ReportListItem[]);
-          }
-        } catch { /* reports endpoint might not be available */ }
-
-        try {
+          // Single request — derive recent reports from the full set to avoid 429 rate limits
           const allRes = await apiRequest("/reports?page=1&per_page=100", { apiKey, timeoutMs: 15000 });
           if (allRes.ok) {
             const data = await allRes.json();
-            if (Array.isArray(data.data)) setAllReports(data.data as ReportListItem[]);
+            if (Array.isArray(data.data)) {
+              // Normalise: backend sends requested_format; older caches may have format
+              const reports = (data.data as Record<string, unknown>[]).map(r => ({
+                ...r,
+                requested_format: r.requested_format ?? r.format ?? "json",
+              })) as ReportListItem[];
+              setAllReports(reports);
+              setRecentReports(reports.slice(0, 5));
+            }
           }
-        } catch { /* best effort */ }
+        } catch { /* reports endpoint might not be available */ }
       }
     } catch { /* silently fail */ }
     finally { setLoading(false); }
@@ -314,7 +315,7 @@ export default function DashboardPage() {
                       {r.region === "zanzibar" ? "Zanzibar" : "Mainland"}
                     </Badge>
                   </td>
-                  <td className="font-mono text-xs">{r.format.toUpperCase()}</td>
+                  <td className="font-mono text-xs">{(r.requested_format || "json").toUpperCase()}</td>
                   <td>{statusBadge(r.status)}</td>
                   <td className="text-sm text-secondary">{formatDate(r.created_at)}</td>
                 </tr>

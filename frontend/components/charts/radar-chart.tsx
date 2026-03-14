@@ -7,8 +7,51 @@ type RadarChartProps = {
   title?: string;
 };
 
+/**
+ * Renders a radar (spider) chart for 3+ factors.
+ * Falls back to horizontal bar visualization for 1-2 factors.
+ */
 export function RadarChart({ factors, size = 250, color = "var(--color-primary)", title }: RadarChartProps) {
-  if (factors.length < 3) return null;
+  if (factors.length === 0) return null;
+
+  // Fallback: horizontal bars for fewer than 3 factors
+  if (factors.length < 3) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {title && <h4 className="text-sm font-medium mb-2">{title}</h4>}
+        <div style={{ width: "100%", maxWidth: size, display: "flex", flexDirection: "column", gap: 10 }}>
+          {factors.map((f, i) => {
+            const max = f.maxScore || 10;
+            const pct = Math.min((f.score / max) * 100, 100);
+            return (
+              <div key={i}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span className="text-xs font-medium">
+                    {f.label.replace(/_/g, " ").replace(/^\w/, c => c.toUpperCase())}
+                  </span>
+                  <span className="text-xs" style={{ color }}>{f.score}</span>
+                </div>
+                <div style={{
+                  width: "100%", height: 8,
+                  background: "var(--color-bg-subtle)",
+                  borderRadius: 4,
+                  overflow: "hidden",
+                }}>
+                  <div style={{
+                    width: `${pct}%`,
+                    height: "100%",
+                    background: color,
+                    borderRadius: 4,
+                    transition: "width 0.4s ease",
+                  }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   const center = size / 2;
   const radius = size * 0.38;
@@ -22,7 +65,7 @@ export function RadarChart({ factors, size = 250, color = "var(--color-primary)"
 
   // Build the data polygon
   const dataPoints = factors.map((f, i) => {
-    const max = f.maxScore || 100;
+    const max = f.maxScore || 10;
     const pct = Math.min(f.score / max, 1);
     return getPoint(i, radius * pct);
   });

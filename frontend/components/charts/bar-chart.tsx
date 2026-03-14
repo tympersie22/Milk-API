@@ -11,71 +11,63 @@ export function BarChart({ data, height = 200, barColor = "var(--color-primary)"
   if (data.length === 0) return null;
 
   const maxValue = Math.max(...data.map(d => d.value), 1);
-  const barWidth = Math.min(40, (100 / data.length) * 0.6);
-  const gap = (100 - barWidth * data.length) / (data.length + 1);
 
   return (
     <div>
       {title && <h4 className="text-sm font-medium mb-2">{title}</h4>}
-      <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none">
-        {/* Grid lines */}
-        {[0.25, 0.5, 0.75, 1].map(pct => {
-          const y = height - 20 - (height - 30) * pct;
-          return (
-            <g key={pct}>
-              <line x1="0" y1={y} x2="100" y2={y} stroke="var(--color-border)" strokeWidth="0.2" strokeDasharray="1,1" />
-              <text x="1" y={y - 1} fontSize="3" fill="var(--color-text-tertiary)">
-                {Math.round(maxValue * pct)}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Bars */}
+      <div style={{ height, display: "flex", alignItems: "flex-end", gap: 8, padding: "8px 0" }}>
         {data.map((d, i) => {
-          const barHeight = (d.value / maxValue) * (height - 30);
-          const x = gap + i * (barWidth + gap);
-          const y = height - 20 - barHeight;
+          const barPct = Math.max((d.value / maxValue) * 100, 2);
           return (
-            <g key={i}>
-              <rect
-                x={x}
-                y={y}
-                width={barWidth}
-                height={barHeight}
-                fill={barColor}
-                rx="1"
-                opacity="0.85"
-              >
-                <title>{`${d.label}: ${d.value}`}</title>
-              </rect>
-              <text
-                x={x + barWidth / 2}
-                y={height - 14}
-                textAnchor="middle"
-                fontSize="2.5"
-                fill="var(--color-text-secondary)"
-              >
-                {d.label}
-              </text>
-              {/* Value label on top */}
-              <text
-                x={x + barWidth / 2}
-                y={y - 2}
-                textAnchor="middle"
-                fontSize="2.8"
-                fill="var(--color-text)"
-                fontWeight="500"
-              >
+            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
+              {/* Value label */}
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text)", marginBottom: 4 }}>
                 {d.value}
-              </text>
-            </g>
+              </span>
+              {/* Bar */}
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: 48,
+                  height: `${barPct}%`,
+                  minHeight: 4,
+                  background: barColor,
+                  borderRadius: "6px 6px 2px 2px",
+                  transition: "height 0.4s ease",
+                  opacity: 0.85,
+                }}
+                title={`${d.label}: ${d.value}`}
+              />
+              {/* Label */}
+              <span style={{
+                fontSize: 11,
+                color: "var(--color-text-secondary)",
+                marginTop: 6,
+                textAlign: "center",
+                lineHeight: 1.2,
+                maxWidth: 60,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {d.label}
+              </span>
+            </div>
           );
         })}
-
-        {/* Baseline */}
-        <line x1="0" y1={height - 20} x2="100" y2={height - 20} stroke="var(--color-border)" strokeWidth="0.3" />
-      </svg>
+      </div>
+      {/* Y-axis scale indicator */}
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        fontSize: 10,
+        color: "var(--color-text-tertiary)",
+        paddingTop: 4,
+        borderTop: "1px solid var(--color-border)",
+      }}>
+        <span>0</span>
+        <span>{maxValue}</span>
+      </div>
     </div>
   );
 }

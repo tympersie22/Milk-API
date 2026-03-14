@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, type_coerce, Uuid as SAUuid
 from sqlalchemy.orm import Session
 
 from app.models.dispute import Dispute
@@ -26,13 +26,14 @@ class RiskEngine:
     def compute_from_db(db: Session, property_id: UUID) -> dict:
         """Compute risk factors from actual database records."""
         prop = db.get(Property, property_id)
+        pid = type_coerce(property_id, SAUuid())  # ensure correct binding on SQLite
         factors = {}
         recommendations: list[str] = []
 
         # --- Ownership chain risk (0-10) ---
         ownership_count = db.scalar(
             select(func.count()).select_from(
-                select(Ownership).where(Ownership.property_id == property_id).subquery()
+                select(Ownership).where(Ownership.property_id == pid).subquery()
             )
         ) or 0
         if ownership_count == 0:
@@ -52,7 +53,7 @@ class RiskEngine:
         active_disputes = db.scalar(
             select(func.count()).select_from(
                 select(Dispute).where(
-                    Dispute.property_id == property_id,
+                    Dispute.property_id == pid,
                     Dispute.status.in_([DisputeStatus.filed, DisputeStatus.hearing, DisputeStatus.appealed]),
                 ).subquery()
             )
@@ -60,7 +61,7 @@ class RiskEngine:
         blocking_disputes = db.scalar(
             select(func.count()).select_from(
                 select(Dispute).where(
-                    Dispute.property_id == property_id,
+                    Dispute.property_id == pid,
                     Dispute.blocks_transfer.is_(True),
                     Dispute.status.in_([DisputeStatus.filed, DisputeStatus.hearing, DisputeStatus.appealed]),
                 ).subquery()
@@ -79,7 +80,7 @@ class RiskEngine:
         # --- Encumbrance risk (0-10) ---
         current_owner = db.scalar(
             select(Ownership).where(
-                Ownership.property_id == property_id, Ownership.is_current.is_(True)
+                Ownership.property_id == pid, Ownership.is_current.is_(True)
             )
         )
         encumbrance_score = 0.0

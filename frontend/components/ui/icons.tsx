@@ -162,3 +162,33 @@ export function IconZap({ size, ...p }: IconProps) {
 export function IconGlobe({ size, ...p }: IconProps) {
   return <svg {...defaults(size)} {...p}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>;
 }
+
+// Camera icon for image upload
+export function IconCamera({ size, ...p }: IconProps) {
+  return <svg {...defaults(size)} {...p}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>;
+}
+
+// Crosshair / target icon for GPS pin
+export function IconCrosshair({ size, ...p }: IconProps) {
+  return <svg {...defaults(size)} {...p}><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>;
+}
+
+// Upload icon
+export function IconUpload({ size, ...p }: IconProps) {
+  return <svg {...defaults(size)} {...p}><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>;
+}
+
+// Map pin icon
+export function IconMapPin({ size, ...p }: IconProps) {
+  return <svg {...defaults(size)} {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>;
+}
+
+// Image icon
+export function IconImage({ size, ...p }: IconProps) {
+  return <svg {...defaults(size)} {...p}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
+}
+
+// Shield off / privacy icon
+export function IconShieldOff({ size, ...p }: IconProps) {
+  return <svg {...defaults(size)} {...p}><path d="M19.69 14a6.9 6.9 0 0 0 .31-2V5l-8-3-3.16 1.18"/><path d="M4.73 4.73 4 5v7c0 6 8 10 8 10a20.29 20.29 0 0 0 5.62-4.38"/><line x1="1" y1="1" x2="23" y2="23"/></svg>;
+}

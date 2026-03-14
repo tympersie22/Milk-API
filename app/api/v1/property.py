@@ -1,3 +1,6 @@
+import logging
+import re
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
@@ -13,8 +16,36 @@ from app.schemas.property import (
 )
 from app.schemas.common import PaginationMeta
 from app.services.property_service import PropertyService
+from app.services.geocoding_service import GeocodingService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/property", tags=["property"])
+
+# Regex patterns for parsing centroid stored as WKT or simple "lat,lng" text
+_WKT_POINT = re.compile(r"POINT\(\s*([-\d.]+)\s+([-\d.]+)\s*\)", re.IGNORECASE)
+_SIMPLE_PAIR = re.compile(r"^\s*([-\d.]+)\s*,\s*([-\d.]+)\s*$")
+
+
+def _parse_centroid(centroid: str | None) -> tuple[float | None, float | None]:
+    """Extract (latitude, longitude) from a centroid string.
+
+    Supports:
+      - WKT: "POINT(lng lat)"
+      - Simple pair: "lat,lng"
+    Returns (None, None) if unparseable.
+    """
+    if not centroid:
+        return None, None
+    m = _WKT_POINT.match(centroid)
+    if m:
+        # WKT stores as POINT(lng lat)
+        return float(m.group(2)), float(m.group(1))
+    m = _SIMPLE_PAIR.match(centroid)
+    if m:
+        # Simple "lat,lng" format
+        return float(m.group(1)), float(m.group(2))
+    return None, None
 
 
 @router.get("/search", response_model=PropertySearchResponse)
@@ -25,18 +56,23 @@ def search_properties(
     db: Session = Depends(get_db),
 ) -> PropertySearchResponse:
     records, total = PropertyService.search(db, query)
-    items = [
-        PropertySummary(
-            id=str(p.id),
-            title_number=p.title_number,
-            region=p.region.value if hasattr(p.region, "value") else p.region,
-            district=p.district,
-            area_name=p.area_name,
-            land_type=p.land_type.value if hasattr(p.land_type, "value") else p.land_type,
-            is_verified=p.is_verified,
+    items = []
+    for p in records:
+        # Try to get coordinates: first from stored centroid, then real-time geocoding
+        lat, lng = GeocodingService.geocode_and_cache(db, p)
+        items.append(
+            PropertySummary(
+                id=str(p.id),
+                title_number=p.title_number,
+                region=p.region.value if hasattr(p.region, "value") else p.region,
+                district=p.district,
+                area_name=p.area_name,
+                land_type=p.land_type.value if hasattr(p.land_type, "value") else p.land_type,
+                is_verified=p.is_verified,
+                latitude=lat,
+                longitude=lng,
+            )
         )
-        for p in records
-    ]
     write_audit_log(
         db=db,
         action="property.search",

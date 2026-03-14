@@ -14,6 +14,7 @@ class OwnershipRecord(BaseModel):
     has_caveat: bool
     has_lien: bool
     encumbrance_details: dict | None = None
+    privacy_opt_out: bool = False
 
 
 class OwnershipResponse(BaseModel):
